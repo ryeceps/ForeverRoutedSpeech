@@ -39,6 +39,9 @@ public sealed record Config
     /// </summary>
     public string? KeyboardShortcut { get; init; }
 
+    /// <summary>The Home tab suggests setting a keyboard shortcut until one is set or this is true (its close button).</summary>
+    public bool ShortcutTipDismissed { get; init; }
+
     /// <summary>Pause after the dictate button before recording, so the start beep isn't recorded.</summary>
     public int DelayMs { get; init; } = 150;
 

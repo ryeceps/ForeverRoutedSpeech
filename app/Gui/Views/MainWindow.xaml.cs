@@ -28,7 +28,7 @@ public sealed partial class MainWindow : Window
 {
     const int MaxLogLines = 400;
     const int InitialWidth = 780, InitialHeight = 640;
-    const int SpeechModelTab = 1;
+    const int SpeechModelTab = 1, ButtonsTab = 2;
 
     readonly Engine? engine;
     readonly ObservableCollection<LogLine> log = [];
@@ -158,6 +158,8 @@ public sealed partial class MainWindow : Window
         GlanceModelText.Text = engine.LoadedModel is { } model ? ModelCatalog.DisplayName(model) : engine.IsLoadingModel ? "Loading…" : "None yet";
         UpdateMic();
         GlanceShortcutText.Text = cfg.KeyboardShortcut ?? "Off";
+        ShortcutNotice.Show(cfg.KeyboardShortcut is null && !cfg.ShortcutTipDismissed ? "Set a keyboard shortcut" : null,
+                            "Dictate from the keyboard too: press it anywhere and speak, then paste with Ctrl+V.", "Set shortcut");
 
         UpdateButtonsTab();
         UpdateSpeechModelTab();
@@ -185,10 +187,26 @@ public sealed partial class MainWindow : Window
         if (Tabs.SelectedItem != Tabs.Items[tab]) Tabs.SelectedItem = Tabs.Items[tab]; // comes back here through SelectionChanged
         DictationPage.Visibility = tab == 0 ? Visibility.Visible : Visibility.Collapsed;
         ModelPage.Visibility = tab == SpeechModelTab ? Visibility.Visible : Visibility.Collapsed;
-        ButtonsPage.Visibility = tab == 2 ? Visibility.Visible : Visibility.Collapsed;
+        ButtonsPage.Visibility = tab == ButtonsTab ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = tab == SettingsTab ? Visibility.Visible : Visibility.Collapsed;
         if (tab == 0 && log.Count > 0) LogList.ScrollIntoView(log[^1]); // lines logged while hidden didn't scroll it
         if (tab == SpeechModelTab) RefreshModels(); // picks up models added or removed outside the app
+    }
+
+    void ShortcutNotice_ActionClick(object sender, RoutedEventArgs e) => ShowTab(ButtonsTab);
+
+    async void ShortcutNotice_CloseClick(object sender, RoutedEventArgs e)
+    {
+        if (engine is null) return;
+        ShortcutNotice.Show(null);
+        try
+        {
+            await engine.UpdateConfigAsync(c => c with { ShortcutTipDismissed = true });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn($"Couldn't save settings: {ex.Message}");
+        }
     }
 
     void ActiveSwitch_Toggled(object sender, RoutedEventArgs e)

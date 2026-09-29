@@ -167,6 +167,7 @@
                     <controls:Notice x:Name="MicNotice" Glyph="&#xEC54;" Visibility="Collapsed" ActionClick="SoundSettings_Click" />
                     <controls:Notice x:Name="ModelNotice" Glyph="&#xE896;" Visibility="Collapsed" ActionClick="ModelNotice_ActionClick" />
                     <controls:Notice x:Name="UpdateNotice" Glyph="&#xE777;" Visibility="Collapsed" ActionClick="DownloadUpdate_Click" />
+                    <controls:Notice x:Name="ShortcutNotice" Glyph="&#xE765;" Visibility="Collapsed" ActionClick="ShortcutNotice_ActionClick" CloseClick="ShortcutNotice_CloseClick" />
                 </StackPanel>
 
                 <ContentControl Grid.Row="1" Style="{StaticResource Frame}" Padding="20,18">

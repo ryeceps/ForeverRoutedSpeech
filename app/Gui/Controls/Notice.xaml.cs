@@ -11,6 +11,14 @@ public sealed partial class Notice : UserControl
     /// <summary>Raised when the action button is pressed.</summary>
     public event RoutedEventHandler? ActionClick;
 
+    /// <summary>Raised when the close button is pressed; handling it shows the close button.</summary>
+    public event RoutedEventHandler? CloseClick
+    {
+        add { closeClick += value; CloseButton.Visibility = Visibility.Visible; }
+        remove => closeClick -= value;
+    }
+    RoutedEventHandler? closeClick;
+
     /// <summary>A Segoe Fluent Icons character, such as U+E896 (download).</summary>
     public string Glyph
     {
@@ -52,4 +60,6 @@ public sealed partial class Notice : UserControl
     }
 
     void ActionButton_Click(object sender, RoutedEventArgs e) => ActionClick?.Invoke(this, e);
+
+    void CloseButton_Click(object sender, RoutedEventArgs e) => closeClick?.Invoke(this, e);
 }

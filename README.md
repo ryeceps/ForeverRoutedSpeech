@@ -132,6 +132,7 @@ Most settings are in the app. The file is plain JSON, checked at launch: a missp
 | `DictateChord` | `RS` | Starts a dictation while chat is open, and cancels one that's ready to paste. Also set in the app. |
 | `RadialMenuChord` | `START` | WoW's radial menu button, so chat opened from the radial is seen too |
 | `KeyboardShortcut` | `null` (off) | e.g. `Ctrl+Shift+Space`. Set in the app. |
+| `ShortcutTipDismissed` | `false` | Set when you close the Home tab's *Set a keyboard shortcut* notice |
 | `SendChord`, `BackChord` | `A`, `B` | The chat panel's Send and Back |
 | `MenuChords` | `X`, `Y` | The chat panel's Chat Channels and Tab Settings menus |
 | `CheckForUpdates` | `true` | Check GitHub for new versions at launch and every 6 hours. Set on the Settings tab. |
