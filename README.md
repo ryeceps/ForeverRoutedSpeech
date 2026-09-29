@@ -7,9 +7,12 @@
 
 **[Website and download](https://speakforever.app/)**
 
-Chat in **World of Warcraft: Forever** with your voice. Open chat with your controller, click the right stick, and say your message: Speak Forever copies it, you paste it into the chat box with **Ctrl+V**, and press **A** to send it. Keyboard players can use a shortcut instead, which works like Windows+H.
+Chat in **World of Warcraft: Forever** by saying your message instead of typing it: mid-fight, on the move, or whenever typing is hard.
 
-Speak Forever never presses a key in the game. It only puts your words on the clipboard; pasting and sending is up to you.
+- **Controller:** open chat, click the right stick and talk. Paste with **Ctrl+V**, send with **A**.
+- **Keyboard:** press your shortcut and talk. Open chat with **Enter**, paste with **Ctrl+V**, send with **Enter**.
+
+Speak Forever never presses a key in the game. It only puts your words on the clipboard; you paste and send them. That's by design: Blizzard's rules don't allow software to send input to the game.
 
 Speech recognition is [Whisper](https://github.com/openai/whisper), running on your own PC through [whisper.cpp](https://github.com/ggml-org/whisper.cpp). What you say never leaves your computer. There's no addon: Speak Forever works alongside WoW's own gamepad chat panel.
 
@@ -60,7 +63,7 @@ Then **leave Speak Forever running** while you play. Play WoW in **Windowed (Ful
 
 Changed your mind? **Click RS again** while it says *Ready to paste*: that cancels it and takes it off the clipboard. Click RS once more to dictate again. Pasting it (Ctrl+V), or sending or closing chat (A, B, Enter or Esc), finishes with it, and RS dictates again straight away; the text stays on the clipboard until the next dictation replaces it. Pressing A or B while you're speaking discards it.
 
-**Pasting from the controller:** Speak Forever deliberately doesn't press Ctrl+V for you. To paste without reaching for the keyboard, map a spare button to Ctrl+V in your controller's own software or in Steam Input, or use a controller that can send keyboard keys itself.
+**Pasting from the controller:** Speak Forever doesn't press Ctrl+V for you, to stay within Blizzard's rules. To paste without reaching for the keyboard, map a spare button to Ctrl+V in your controller's own software or in Steam Input, or use a controller that can send keyboard keys itself.
 
 Speak Forever follows the chat panel by watching the same buttons WoW does. RS only dictates while the chat box is open. Speak Forever doesn't look at the game or which window is in front: it just copies what you said when you press the button.
 
@@ -68,7 +71,7 @@ Speak Forever follows the chat panel by watching the same buttons WoW does. RS o
 
 ### With a keyboard
 
-On the **Controls** tab, click **Change** next to *Dictate (keyboard)* and press any key or combination, such as Ctrl+Shift+Space or F8. While Speak Forever is active, Windows sends that key to Speak Forever instead of the program you're in, so pick one you don't need elsewhere, or pause Speak Forever when you do.
+The shortcut is off until you pick one. On the **Controls** tab, click **Change** next to *Dictate (keyboard)* and press any key or combination, such as Ctrl+Shift+Space or F8. While Speak Forever is active, Windows sends that key to Speak Forever instead of the program you're in, so pick one you don't need elsewhere, or pause Speak Forever when you do.
 
 Like Windows+H, the shortcut works in **any program**: press it and speak, then paste with Ctrl+V wherever you like. In WoW, open chat with Enter, paste, and press Enter to send. Press the shortcut again to finish early, or, while it says *Ready to paste*, to cancel.
 
@@ -106,7 +109,7 @@ Your voice is recognised on your PC and never sent anywhere. Speak Forever conne
 - **Your clipboard is used.** Each dictation replaces what was on it. It's kept out of Windows clipboard history (Win+V) and cloud clipboard sync.
 - **WoW's chat box holds 255 characters**, about 40–50 words. Only what fits is copied, cut at the last whole word; the overlay and the Home tab say what was left out.
 - **Dictation ends on a pause**, detected by volume. Loud game audio through speakers can keep it listening; a headset avoids that.
-- **Terms of service:** Speak Forever doesn't read the game or send it any input: it puts your own dictated words on the clipboard, and you paste and send them. Blizzard hasn't approved it, though, and its terms forbid third-party software it hasn't authorised, so use it at your own risk.
+- **You paste and send:** Speak Forever doesn't read the game or send it any input, in keeping with Blizzard's rules. It puts your own dictated words on the clipboard, and the rest is up to you.
 
 ## Troubleshooting
 
