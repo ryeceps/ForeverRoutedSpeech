@@ -47,3 +47,9 @@ Version-1 payloads have nine tab-separated fields: version `1`, client build, gr
 Version 2 keeps the first nine fields (with version `2`) and adds four: focused-field kind (`none|auctionhouse|unsupported`), percent-encoded field identity, field limit, and `bytes|chars`. The addon emits version 2; the companion also accepts version 1 without field evidence. Unknown non-chat fields block routing rather than becoming chat drafts.
 
 Sampling runs at four Hz. Only an advancing heartbeat refreshes freshness; identical decoded frames age out after two seconds. Decode errors invalidate context immediately. Capture requires a visible, restored, unambiguous game window and a valid strip within its client bounds. An unobscured background strip can support clipboard edits while the companion has focus; occlusion fails decoding. Game-mode click recording requires the configured game in the foreground. The third ready-draft controller click requests one guarded Ctrl+V shortcut; the app never sends chat or activates/restores a game window. This source change still requires live verification.
+
+## Active chat and search defaults (protocol 3)
+
+Version 3 extends the version-2 13-field payload with active chat destination and optional numbered-channel ID. The addon reads the active edit box's chatType/channelTarget attributes using protected calls. Verify these attributes on the Forever client while running /wvr chatinput; missing attributes fall back to Say, unsupported known audiences require manual selection. Version 1/2 frames remain readable but cannot report an active audience. Group membership no longer chooses the fallback audience.
+
+Named Auction House and other search fields require their own manually checked limits and /wvr field bytes|chars <limit> registration. They bypass chat classification and keep the exact transcript as plain text. Unknown fields remain blocked. Update the companion and addon together, then reload the addon in the game.

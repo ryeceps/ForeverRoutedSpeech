@@ -56,7 +56,7 @@ public sealed class DraftRouter : IDisposable
     public bool ClassifierLoaded => handle != 0;
     public bool FocusedFieldAvailable
     {
-        get {lock(gate) return tracker.IsFresh(clock.Elapsed) && tracker.Current?.FocusedText?.Kind == TextFieldKind.AuctionHouse;}
+        get {lock(gate) return tracker.IsFresh(clock.Elapsed) && tracker.Current?.FocusedText?.Kind is TextFieldKind.AuctionHouse or TextFieldKind.Search;}
     }
     private void Poll()
     {

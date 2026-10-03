@@ -20,7 +20,8 @@ public static class StatusProtocol
         if (Checksum(frame[..(14 + length)]) != BinaryPrimitives.ReadUInt32LittleEndian(frame[(14 + length)..])) throw new FormatException("Checksum failed.");
         uint session = BinaryPrimitives.ReadUInt32LittleEndian(frame[6..]), sequence = BinaryPrimitives.ReadUInt32LittleEndian(frame[10..]);
         var fields = new UTF8Encoding(false, true).GetString(frame.Slice(14, length)).Split('\t');
-        bool extended=fields.Length==13 && fields[0]=="2";
+        bool activePanel=fields.Length==15 && fields[0]=="3";
+        bool extended=activePanel || fields.Length==13 && fields[0]=="2";
         if ((!extended && (fields.Length!=9 || fields[0]!="1")) || fields[1].Length==0) throw new FormatException("Invalid context fields.");
         var group = fields[2] switch { "solo" => GroupCategory.Solo, "party" => GroupCategory.Party, "raid" => GroupCategory.Raid, "instance" => GroupCategory.Instance, _ => throw new FormatException("Invalid group.") };
         if (fields[3] != "0" && fields[3] != "1") throw new FormatException("Invalid guild.");
@@ -49,15 +50,34 @@ public static class StatusProtocol
         TextTarget? textTarget=null;
         if(extended)
         {
-            if(fields[9] is not ("none" or "auctionhouse" or "unsupported") || !int.TryParse(fields[11],out int fieldLimit) || fieldLimit<0 || fieldLimit>4096 || fields[12] is not ("bytes" or "chars")) throw new FormatException("Invalid focused text field.");
+            if(fields[9] is not ("none" or "auctionhouse" or "search" or "unsupported") || !int.TryParse(fields[11],out int fieldLimit) || fieldLimit<0 || fieldLimit>4096 || fields[12] is not ("bytes" or "chars")) throw new FormatException("Invalid focused text field.");
             if(fields[9]!="none")
             {
                 string name=Uri.UnescapeDataString(fields[10]);
                 if(string.IsNullOrWhiteSpace(name) || name.Length>128) throw new FormatException("Invalid field identity.");
-                textTarget=new(name,fields[9]=="auctionhouse" ? TextFieldKind.AuctionHouse : TextFieldKind.Unsupported,fieldLimit,fields[12]=="bytes");
+                textTarget=new(name,fields[9]=="auctionhouse" ? TextFieldKind.AuctionHouse : fields[9]=="search" ? TextFieldKind.Search : TextFieldKind.Unsupported,fieldLimit,fields[12]=="bytes");
             }
         }
-        return new(extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget);
+        Destination? activeDestination=null;int? activeChannelId=null;bool unsupported=false;
+        if(activePanel)
+        {
+            if(fields[13]=="unsupported") unsupported=true;
+            else if(fields[13]!="none")
+            {
+                if(!Enum.TryParse<Destination>(fields[13],true,out var destination) || !Enum.IsDefined(destination) || destination==Destination.Default)
+                    throw new FormatException("Invalid active chat destination.");
+                activeDestination=destination;
+            }
+            if(fields[14].Length>0)
+            {
+                if(!int.TryParse(fields[14],out int id) || id<1 || id>999 || activeDestination is not (Destination.General or Destination.Trade or Destination.LookingForGroup or Destination.Custom))
+                    throw new FormatException("Invalid active channel ID.");
+                activeChannelId=id;
+            }
+            if(activeDestination is Destination.General or Destination.Trade or Destination.LookingForGroup or Destination.Custom && activeChannelId is null)
+                throw new FormatException("Missing active channel ID.");
+        }
+        return new(activePanel ? 3 : extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget,activeDestination,activeChannelId,unsupported);
     }
 }
 

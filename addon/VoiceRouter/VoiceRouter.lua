@@ -92,8 +92,27 @@ local function focusedField(db)
     if type(name) ~= "string" or name == "" then name = "unnamed" end
     lastField = name
     local verified = db and db.textFields and db.textFields[name]
-    if verified then return "auctionhouse", name, verified.limit, verified.units end
+    if verified and db.build == select(1, build()) then return verified.kind or "auctionhouse", name, verified.limit, verified.units end
     return "unsupported", name, 0, "chars"
+end
+local function activeAudience(db, joined)
+    if not db or not db.chatInputVerified then return "none", "" end
+    local active = safe(chatApi())
+    if not active then return "none", "" end
+    local kind = safe(active.GetAttribute, active, "chatType")
+    if not kind then return "none", "" end
+    local names = {SAY="Say", GUILD="Guild", PARTY="Party", RAID="Raid", INSTANCE_CHAT="Instance"}
+    if names[kind] then return names[kind], "" end
+    if kind == "CHANNEL" then
+        local id = tonumber(safe(active.GetAttribute, active, "channelTarget"))
+        if id then
+            for record in joined:gmatch("[^;]+") do
+                local number, audience = record:match("^(%d+),([^,]+),")
+                if tonumber(number) == id then return audience, tostring(id) end
+            end
+        end
+    end
+    return "unsupported", ""
 end
 local function emit()
     local number = build()
@@ -124,7 +143,8 @@ local function emit()
         if ok then chatInput = active and "open" or "closed" end
     end
     local fieldKind, fieldName, fieldLimit, fieldUnits = focusedField(db)
-    local payload = table.concat({"2", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits}, "\t")
+    local audience, channelId = activeAudience(db and db.build == number and db or nil, joined)
+    local payload = table.concat({"3", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId}, "\t")
     if #payload > 494 then label:SetText("Voice Router: context exceeds strip capacity"); return end
     seq = (seq + 1) % 4294967296
     local data = "WVR1" .. string.char(#payload % 256, math.floor(#payload / 256)) .. pack32(session) .. pack32(seq) .. payload
@@ -166,9 +186,9 @@ SlashCmdList.VOICEROUTER = function(text)
         local n = tonumber(extra)
         if lastField and lastField ~= "unnamed" and (arg == "bytes" or arg == "chars") and n and n > 0 and n <= 4096 and n == math.floor(n) then
             db.textFields = db.textFields or {}
-            db.textFields[lastField] = {limit=n, units=arg}
-            print("Confirmed previously focused Auction House search field: " .. lastField)
-        else print("Focus a named Auction House search box first, verify its limit, then /wvr field bytes|chars <limit>") end
+            db.textFields[lastField] = {limit=n, units=arg, kind=lastField:lower():find("auction", 1, true) and "auctionhouse" or "search"}
+            print("Confirmed previously focused search field: " .. lastField)
+        else print("Focus a named search box first, verify its limit, then /wvr field bytes|chars <limit>") end
     elseif command == "limit" then
         local n = tonumber(extra)
         if (arg == "bytes" or arg == "chars") and n and n > 0 and n <= 4096 and n == math.floor(n) then

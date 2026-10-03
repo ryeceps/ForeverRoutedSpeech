@@ -15,13 +15,13 @@ Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required
 3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft.
 4. Once the draft is ready, **click the right stick a third time to paste**. Press the game's mapped send button separately to send. Wait for Ready between the second and third click; a double-click is not required.
 
-The third controller click generates one Ctrl+V shortcut. It does not open chat, select or clear existing text, or press Enter. Paste requires fresh addon context, the same destination/field, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. You can still paste manually. Keyboard dictation retains its original cancel-ready behavior. Unbind the game's right-stick click action (normally Ping in beta) so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
+The third controller click generates one Ctrl+V shortcut. It does not open chat, select or clear existing text, or press Enter. Paste requires fresh addon context, the same active chat destination/field, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. You can still paste manually. Keyboard dictation retains its original cancel-ready behavior. Unbind the game's right-stick click action (normally Ping in beta) so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
 
 ## How audience routing works
 
 - **Explicit instruction first:** `Tell guild ...`, `Say to everyone around me ...`, or `Ask in trade ...` selects that audience and removes only the recognized instruction. An unavailable explicit destination keeps the draft waiting for another selection.
 - **Confident inference next:** trained guild-address intent can choose Guild. Public-channel inference for General, Trade and LFG is disabled in this preview until held-out precision meets the target. Explicit joined public channels still work; merely mentioning an item or guild does not establish an audience.
-- **Group default otherwise:** available Instance, then Raid, then Party, then Say. Custom channels require an explicit name or manual selection.
+- **Otherwise use the active chat panel, then Say:** a known, available active destination is preserved, including a joined numbered/custom channel. Group membership alone no longer changes the audience. Explicit instructions and confident classifier inference still take priority in chat.
 
 Editing the message or destination updates the clipboard when the draft is valid. Silence, transcription errors, unknown fields, invalid context and oversized messages do not replace it. Missing or stale context requires manual destination confirmation; oversized drafts require editing rather than truncation. Default operation retains no audio or transcript history and does not retrain during play.
 
@@ -33,7 +33,7 @@ Install the addon with `scripts/Install-Addon.ps1`, supplying the actual client'
 
 Capture defaults are game window `World of Warcraft`, client position `(16,64)` and a cell pitch of 4 physical pixels. Adjust `%LOCALAPPDATA%/ForeverRoutedSpeech/capture.json` if placement or scaling differs. No calibration wizard is included yet. Window movement, multiple monitors, scaling, occlusion and minimization require live testing.
 
-**Auction House:** when fresh addon context identifies a registered, verified focused search field, dictation produces plain text with no chat prefix. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
+**Auction House and other search boxes:** when fresh addon context identifies a registered, verified focused search field, dictation preserves the whole transcript as plain text with no chat prefix. Search text bypasses the chat classifier, so even words like “Tell guild” remain part of the query. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
 
 Blizzard approval for this particular integration has not been established. See [policy notes](docs/POLICY.md). Whispers, automatic sending, continuous listening and assistant answers are outside this preview.
 

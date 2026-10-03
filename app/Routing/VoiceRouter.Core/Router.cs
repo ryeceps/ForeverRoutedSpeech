@@ -43,15 +43,17 @@ public sealed class Router(InferencePolicy policy)
                 Available(context, best.Key, channel?.Id))
                 return new(best.Key, channel?.Id, scores, RouteReason.ModelInference, "Clear trained audience intent (model score).", message, channel?.Name);
         }
-        var fallback = context.Group switch
+        if(context.ActivePanelUnsupported)
+            return new(null,null,scores,RouteReason.ConfirmationRequired,"Active chat audience is unsupported. Select a destination.",message);
+        if(context.ChatInput == ChatInputState.Open && context.ActiveDestination is Destination active)
         {
-            GroupCategory.Instance => new[] { Destination.Instance, Destination.Raid, Destination.Party, Destination.Say },
-            GroupCategory.Raid => new[] { Destination.Raid, Destination.Party, Destination.Say },
-            GroupCategory.Party => new[] { Destination.Party, Destination.Say },
-            _ => new[] { Destination.Say }
-        };
-        foreach (var destination in fallback)
-            if (Available(context, destination, null)) return new(destination, null, scores, RouteReason.GroupDefault, "Available group default.", message);
+            var channel=context.Channels.FirstOrDefault(c=>c.Id==context.ActiveChannelId && c.Kind==active);
+            if(!Available(context,active,context.ActiveChannelId))
+                return new(active,context.ActiveChannelId,scores,RouteReason.ConfirmationRequired,"Active chat destination unavailable. Select a destination.",message,channel?.Name);
+            return new(active,context.ActiveChannelId,scores,RouteReason.ActivePanelDefault,"Current active chat panel.",message,channel?.Name);
+        }
+        if(Available(context,Destination.Say,null))
+            return new(Destination.Say,null,scores,RouteReason.SayDefault,"Say default; no active chat destination known.",message);
         return new(null, null, scores, RouteReason.ConfirmationRequired, "No verified destination is available.", message);
     }
 

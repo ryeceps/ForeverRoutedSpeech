@@ -18,3 +18,8 @@ After the results above, Windows Smart App Control blocked the rebuilt `SpeakFor
 ## Three-click paste source change
 
 Added separate start/finish/paste controller stages, 250 ms click suppression, disconnect/held-reconnect guards, fresh matching focus/context checks, owned-clipboard checks and a single Ctrl+V request without Enter. Added deterministic context-transition assertions. These new tests are compiled only; runtime tests and live paste checks remain outstanding under the existing Smart App Control blocker. Preview 1 does not include this change.
+
+## Active-panel/Say and search update
+
+112 deterministic routing/protocol assertions passed, including active-chat defaults, Say while grouped, unsupported audiences, changed-panel paste guards and search transcript preservation. Real fastText/default smoke checks passed (19 checks including model/default checks; routing mean 0.035 ms, screen capture excluded). Lua 5.1 addon protocol and preview mocks passed. These runs completed normally with Windows security unchanged; the historical Smart App Control block above was from the earlier final run. Live Forever API/focus and controller paste verification remain outstanding. The addon and companion must be updated together for protocol 3.
+

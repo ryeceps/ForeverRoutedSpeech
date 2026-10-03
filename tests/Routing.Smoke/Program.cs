@@ -18,18 +18,18 @@ void Check(bool condition,string name) {if(!condition) throw new Exception(name)
 using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context))
 {
     Check(router.ClassifierLoaded,"Real fastText model loaded without another Whisper instance");
-    Check(router.Prepare("Hello friends").ClipboardText=="/p Hello friends","Party default");
+    Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Say default while grouped");
     Check(router.Prepare("Tell everyone around me we need help").ClipboardText=="/say we need help","Explicit local audience");
     Check(router.Prepare("Ask in trade selling potions").ClipboardText=="/5 selling potions","Explicit current Trade ID");
     Check(router.Prepare("how's the guild doing guys?").Destination=="Guild","Real classifier guild address");
     context=context with {Heartbeat=2,Channels=[new(2,"Trade",Destination.Trade)]};router.RefreshContext();
     Check(router.Prepare("Ask in trade selling potions").ClipboardText=="/2 selling potions","Renumbered public channel");
     context=context with {Heartbeat=3,Group=GroupCategory.Instance};router.RefreshContext();
-    Check(router.Prepare("Hello friends").ClipboardText=="/i Hello friends","Instance transition");
+    Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Instance transition keeps Say default");
     Check(!router.Prepare(new string('a',256)).Ready,"Oversized draft retained");
     Check(!router.Prepare("/logout").Ready,"Leading slash blocked");
     Check(!router.Prepare(" ").Ready,"Silence cannot copy");
-    Check(router.Prepare("Hello 世界").ClipboardText=="/i Hello 世界","Unicode preserved");
+    Check(router.Prepare("Hello 世界").ClipboardText=="/say Hello 世界","Unicode preserved");
     context=context with {Heartbeat=4,FocusedText=new("Auction House search",TextFieldKind.AuctionHouse,63,false)};router.RefreshContext();
     Check(router.Prepare("Runecloth").ClipboardText=="Runecloth","AH plain text, no chat prefix");
     Check(!router.Prepare(new string('a',64)).Ready,"AH limit");

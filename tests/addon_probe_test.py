@@ -68,7 +68,7 @@ fields,_=decode(frame());assert fields[8]=="open"
 lua.execute("ChatEdit_GetActiveWindow=nil; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=="unknown"
 lua.execute("search={GetName=function() return 'AuctionSearch' end}; function GetCurrentKeyBoardFocus() return search end; handlers.OnUpdate(nil,.25)")
-fields,_=decode(frame());assert fields[0]=='2' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
+fields,_=decode(frame());assert fields[0]=='3' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
 lua.execute("SlashCmdList.VOICEROUTER('field chars 63'); handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[9]=='auctionhouse' and fields[11]=='63'
 lua.execute("function GetCurrentKeyBoardFocus() return {GetName=function() return 'OtherBox' end} end; handlers.OnUpdate(nil,.25)")
@@ -79,4 +79,12 @@ lua.execute("SlashCmdList.VOICEROUTER('reset'); ChatEdit_GetActiveWindow=nil; ha
 fields,_=decode(frame());assert fields[9]=='unsupported', 'reset clears field approval'
 lua.execute("ChatFrameUtil={GetActiveWindow=function() return search end}; SlashCmdList.VOICEROUTER('chatinput'); handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=='open' and fields[9]=='none', 'modern chat API recognized without legacy alias'
+lua.execute("search.GetAttribute=function(self,key) if key=='chatType' then return 'PARTY' end end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='Party' and fields[14]==''
+lua.execute("search.GetAttribute=function(self,key) if key=='chatType' then return 'CHANNEL' else return 7 end end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='Custom' and fields[14]=='7'
+lua.execute("search.GetAttribute=function(self,key) return 'WHISPER' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='unsupported'
+lua.execute("otherSearch={GetName=function() return 'InventorySearch' end}; GetCurrentKeyBoardFocus=function() return otherSearch end; handlers.OnUpdate(nil,.25); SlashCmdList.VOICEROUTER('field chars 40'); handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[9]=='search' and fields[10]=='InventorySearch'
 print("PASS: Lua 5.1 framing, checksum, capability gates, modern/legacy chat focus, heartbeat, renumbering, UTF-8 and API failures. Actual Forever client untested.")
