@@ -434,6 +434,8 @@ public sealed class Engine : IAsyncDisposable
             {
                 Log.Warn("Controller disconnected.");
                 controllerSlot = -1;
+                session.CancelAll();
+                lastDictationClick = 0;
                 Changed();
             }
             if (controllerSlot < 0 && Environment.TickCount64 >= nextScan)
@@ -446,6 +448,7 @@ public sealed class Engine : IAsyncDisposable
                     ButtonStyle = reader.Style;
                     Log.Info($"Controller connected: {reader.Name}.");
                     read = reader.Read();
+                    prev = read?.Buttons ?? 0; // reconnecting with a held button must not trigger
                     Changed();
                 }
             }
@@ -501,14 +504,14 @@ public sealed class Engine : IAsyncDisposable
                 Log.Info($"  would dictate ({b.Dictate.Text})");
                 break;
             case ChatAction.Dictate:
-                session.Start(b.Dictate.Text);
+                ControllerDictation(b.Dictate.Text);
                 break;
-            // Text waiting to be pasted: the dictate button cancels it wherever you are, as the overlay says.
-            case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when session.IsReady:
-                session.Start(b.Dictate.Text);
+            // A ready draft needs a distinct physical click and a verified focused field.
+            case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when session.IsReady && !probe:
+                ControllerDictation(b.Dictate.Text);
                 break;
             case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when router.FocusedFieldAvailable && !probe:
-                session.Start(b.Dictate.Text);
+                ControllerDictation(b.Dictate.Text);
                 break;
             // Often a binding of its own in the game, so these are noted, not complained about.
             case ChatAction.DictateWhileClosed:
@@ -536,6 +539,22 @@ public sealed class Engine : IAsyncDisposable
         if (!radialMenu.OnRightStick(x, y)) return;
         chat.Open();
         Changed();
+    }
+
+    long lastDictationClick;
+    void ControllerDictation(string trigger)
+    {
+        long now = Environment.TickCount64;
+        if (lastDictationClick != 0 && now - lastDictationClick < 250) return;
+        lastDictationClick = now;
+        if (!session.IsReady) { session.Start(trigger); return; }
+        string? error = session.PastePrepared(() => router.ValidatePaste());
+        if (error is null) Log.Info("Draft pasted by controller request; sending remains manual.");
+        else
+        {
+            Log.Warn(error);
+            if (LastDraft is { } draft) PublishCopiedDraft(draft with { Reason = error });
+        }
     }
 
     void Changed() => StateChanged?.Invoke();

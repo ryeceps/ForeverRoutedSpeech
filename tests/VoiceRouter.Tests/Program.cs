@@ -132,5 +132,17 @@ Check(!TextDrafts.SameTarget(target,target with {Name="OtherBox"}),"changed focu
 string v2=payloadText.Replace("1\t12345","2\t12345")+"\tauctionhouse\tSearchBox\t63\tchars";
 Check(StatusProtocol.Decode(Frame(v2)).FocusedText==target with {Limit=63},"v2 focus protocol decoded");
 Reject(Frame(v2.Replace("auctionhouse","purchase")),"unknown field type rejected");
+var pasteContext=Context(GroupCategory.Party) with {ChatInput=ChatInputState.Open};
+Check(PasteContext.Validate(pasteContext,pasteContext with {Heartbeat=2},true) is null,"paste accepts advancing heartbeat");
+Check(PasteContext.Validate(pasteContext,pasteContext,false) is not null,"paste refuses stale context");
+Check(PasteContext.Validate(null,pasteContext,true) is not null,"paste refuses unknown original context");
+Check(PasteContext.Validate(pasteContext,pasteContext with {ChatInput=ChatInputState.Closed},true) is not null,"paste refuses closed chat");
+Check(PasteContext.Validate(pasteContext,pasteContext with {Session=2},true) is not null,"paste refuses a new game session");
+Check(PasteContext.Validate(pasteContext,pasteContext with {Group=GroupCategory.Solo},true) is not null,"paste refuses group transition");
+Check(PasteContext.Validate(pasteContext,pasteContext with {Channels=[new(7,"Trade - City",Destination.Trade)]},true) is not null,"paste refuses renumbering");
+Check(PasteContext.Validate(pasteContext,pasteContext with {FocusedText=target},true) is not null,"paste refuses chat to AH focus transition");
+var ahPaste=pasteContext with {ChatInput=ChatInputState.Closed,FocusedText=target};
+Check(PasteContext.Validate(ahPaste,ahPaste,true) is null,"paste accepts same verified AH field");
+Check(PasteContext.Validate(ahPaste,ahPaste with {FocusedText=target with {Name="OtherBox"}},true) is not null,"paste refuses changed AH field");
 var timer = Stopwatch.StartNew(); for(int i=0;i<10000;i++) Route("Hey, what's going on?",Context(GroupCategory.Party)); timer.Stop();
 Console.WriteLine($"PASS: {passed} assertions. Deterministic routing mean: {timer.Elapsed.TotalMilliseconds/10000:F4} ms (no native inference).");

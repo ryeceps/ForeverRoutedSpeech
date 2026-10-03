@@ -4,7 +4,7 @@
 
 ## Download and preview status
 
-Get the Windows x64 ZIP from [Releases](https://github.com/ryeceps/ForeverRoutedSpeech/releases). The first release is an **unsigned experimental prerelease**, not a validated gameplay release. Windows Smart App Control blocked final runtime tests on the development PC. Earlier component tests passed; final runtime validation, code signing and live Forever compatibility remain outstanding. Do not disable Windows security to run it. See [test results](docs/TEST-RESULTS.md).
+Get the Windows x64 ZIP from [Releases](https://github.com/ryeceps/ForeverRoutedSpeech/releases). The downloadable Preview 1 uses external manual paste; the new third-click paste is currently source-only. The first release is an **unsigned experimental prerelease**, not a validated gameplay release. Windows Smart App Control blocked final runtime tests on the development PC. Earlier component tests passed; final runtime validation, code signing and live Forever compatibility remain outstanding. Do not disable Windows security to run it. See [test results](docs/TEST-RESULTS.md).
 
 Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required. The package contains the app, .NET runtime, native libraries, Turbo model, routing classifier, addon and Microsoft's signed VC runtime prerequisite. The launcher installs that prerequisite only if needed; Windows may request elevation. No model picker, API key or separate model download is required. Normal speech processing stays local and offline. GPU inference uses Vulkan where available, with CPU fallback. Wait for Ready after initial model loading.
 
@@ -13,9 +13,9 @@ Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required
 1. Open the game's chat input using your mapped controller button.
 2. Click the right stick to start recording, speak, then click it again to stop. Recording is capped at 30 seconds.
 3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft.
-4. Press your physical controller button mapped to **Ctrl+V** to paste. Press the game's mapped send button to send.
+4. Once the draft is ready, **click the right stick a third time to paste**. Press the game's mapped send button separately to send. Wait for Ready between the second and third click; a double-click is not required.
 
-The app itself never generates game key presses or sends messages. Recording clicks do not paste or send. The controller needs working game mappings for opening chat, pasting and sending. Microphone and recording bindings remain adjustable. Clicking dictation while a copied draft is waiting cancels that draft.
+The third controller click generates one Ctrl+V shortcut. It does not open chat, select or clear existing text, or press Enter. Paste requires fresh addon context, the same destination/field, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. You can still paste manually. Keyboard dictation retains its original cancel-ready behavior. Unbind the game's right-stick click action (normally Ping in beta) so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
 
 ## How audience routing works
 

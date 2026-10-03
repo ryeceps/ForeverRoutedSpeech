@@ -14,3 +14,7 @@ These are local component/mock results, not a Forever gameplay test. Release-to-
 ## Final validation blocker
 
 After the results above, Windows Smart App Control blocked the rebuilt `SpeakForever.Core.dll` during the final core test run (Code Integrity events 3033/3077, error 0x800711C7). The final source includes later clipboard-error handling and capture-settings cleanup which have not completed runtime validation. The local package is an unsigned preview, not an accepted runnable release. Security policy was not disabled or bypassed. Signing/trust and the live Forever tests remain outstanding.
+
+## Three-click paste source change
+
+Added separate start/finish/paste controller stages, 250 ms click suppression, disconnect/held-reconnect guards, fresh matching focus/context checks, owned-clipboard checks and a single Ctrl+V request without Enter. Added deterministic context-transition assertions. These new tests are compiled only; runtime tests and live paste checks remain outstanding under the existing Smart App Control blocker. Preview 1 does not include this change.

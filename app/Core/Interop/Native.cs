@@ -1,14 +1,16 @@
 using System.Runtime.InteropServices;
+using System.Diagnostics;
+using VoiceRouter.App;
 
 namespace SpeakForever.Interop;
 
 /// <summary>
-/// The clipboard. Speak Forever never sends key presses to another program, or looks at one:
-/// you paste what it copies.
+/// Clipboard handling and a single user-requested paste shortcut. Never sends chat.
 /// </summary>
 public static partial class Native
 {
     const uint CF_UNICODETEXT = 13, GMEM_MOVEABLE = 0x2;
+    static readonly int[] PasteModifiers = [0x10, 0x11, 0x12, 0x5B, 0x5C, 0x56];
     const int OpenAttempts = 10, OpenRetryMs = 20;
     static readonly IntPtr HWND_MESSAGE = -3;
 
@@ -59,6 +61,56 @@ public static partial class Native
         EmptyClipboard();
         CloseClipboard();
     }
+
+    // INPUT has a 32-byte union on Windows x64. Keyboard data begins at offset 8.
+    [StructLayout(LayoutKind.Explicit, Size = 40)]
+    struct PasteInput
+    {
+        [FieldOffset(0)] public uint Type;
+        [FieldOffset(8)] public ushort Key;
+        [FieldOffset(12)] public uint Flags;
+    }
+
+    /// <summary>Requests Ctrl+V once on Windows x64, only for our unchanged clipboard and focused WoW.</summary>
+    public static string? PasteCopied(uint version, out bool attempted)
+    {
+        attempted = false;
+        if (!Environment.Is64BitProcess) return "Controller paste requires Windows x64.";
+        nint window = GetForegroundWindow();
+        if (!WindowsCapture.IsGameForeground(Settings.Load())) return "Return to the game before pasting.";
+        GetWindowThreadProcessId(window, out uint processId);
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            if (!process.ProcessName.Equals("Wow", StringComparison.OrdinalIgnoreCase) &&
+                !process.ProcessName.Equals("WowB", StringComparison.OrdinalIgnoreCase))
+                return "Foreground program is not a recognized WoW client; paste manually.";
+        }
+        catch (ArgumentException) { return "Game window changed; paste manually."; }
+        catch (InvalidOperationException) { return "Cannot identify the game; paste manually."; }
+        catch (System.ComponentModel.Win32Exception) { return "Cannot verify the game process; paste manually."; }
+        if (PasteModifiers.Any(IsKeyDown))
+            return "Release keyboard modifiers before controller paste.";
+        if (version == 0 || GetClipboardSequenceNumber() != version)
+            return "Clipboard changed. Review and recopy the draft before pasting.";
+        if (GetForegroundWindow() != window) return "Game focus changed; paste manually.";
+        PasteInput[] keys = [new() { Type = 1, Key = 0x11 }, new() { Type = 1, Key = 0x56 },
+            new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
+        attempted = true;
+        uint sent = SendInput((uint)keys.Length, keys, Marshal.SizeOf<PasteInput>());
+        if (sent == keys.Length) return null;
+        // Release only; never replay a partial paste or elevate to bypass Windows input restrictions.
+        PasteInput[] release = [new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
+        SendInput((uint)release.Length, release, Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the full paste shortcut. Inspect the game field and paste manually if needed.";
+    }
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial uint SendInput(uint count, [In] PasteInput[] inputs, int size);
+    [LibraryImport("user32.dll")]
+    private static partial nint GetForegroundWindow();
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint window, out uint processId);
 
     /// <summary>The key is held down right now, in whichever program has focus.</summary>
     public static bool IsKeyDown(int virtualKey) => (GetAsyncKeyState(virtualKey) & 0x8000) != 0;

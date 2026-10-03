@@ -30,6 +30,7 @@ public sealed class DraftRouter : IDisposable
     private Router router=new(new());
     private string modelError="Classifier not loaded.";
     private bool disposed;
+    private GameContext? copiedContext;
     private readonly Func<GameContext> readContext;
     public DraftRouter(string folder, Func<GameContext>? contextReader = null)
     {
@@ -72,7 +73,9 @@ public sealed class DraftRouter : IDisposable
         lock(gate)
         {
             ObjectDisposedException.ThrowIf(disposed,this);
-            var timing=Stopwatch.StartNew();var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
+            copiedContext=tracker.Current;
+            var timing=Stopwatch.StartNew();
+            var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
             if(context?.FocusedText is TextTarget target)
             {
                 var field=TextDrafts.Prepare(new(text,TranscriptionStatus.Success),target,fresh);
@@ -101,6 +104,7 @@ public sealed class DraftRouter : IDisposable
         lock(gate)
         {
             ObjectDisposedException.ThrowIf(disposed,this);
+            copiedContext=tracker.Current;
             var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
             if(fresh && context?.FocusedText is not null)
                 return new(text,null,"Unconfirmed","A text field is focused. Return to chat before choosing a chat destination.",0);
@@ -119,6 +123,17 @@ public sealed class DraftRouter : IDisposable
             return new(text,draft.ClipboardText,prefix,draft.Explanation,0);
         }
     }
+    /// <summary>Rechecks focus and the context used to prepare the copied draft.</summary>
+    public string? ValidatePaste()
+    {
+        Poll();
+        lock(gate)
+        {
+            if(!WindowsCapture.IsGameForeground(Settings.Load())) return "Return to the game before pasting.";
+            return PasteContext.Validate(copiedContext,tracker.Current,tracker.IsFresh(clock.Elapsed));
+        }
+    }
+
     public void Dispose()
     {
         timer.Dispose();

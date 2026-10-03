@@ -25,23 +25,10 @@ The often-repeated one-input/one-action rule is not a blanket EULA exception. A 
 
 The [August 5, 2025 staff announcement](https://us.forums.blizzard.com/en/wow/t/prohibitions-on-third-party-software/2142972) reiterates enforcement concerning client modification and security bypasses. Player replies below it are not official policy. No official Forever-specific voice-router exemption was located. Terms displayed by the actual client must still be checked for supplemental conditions.
 
-The companion's third-click confirmation currently operates only inside its own test pad. Its game-input restriction remains unchanged. Tests validate behavior, not contractual approval.
+## Current controller paste change
 
-## Existing implementation restriction
+The source now supports three separate physical recording-button clicks: start, finish, then paste after Ready. The third click generates a single Ctrl+V shortcut into the foreground game, guarded by unchanged clipboard ownership and fresh, matching addon context. It never opens chat, selects/clears existing text, presses Enter, repeats input, or retries a partial shortcut. Sending remains a separate physical game input.
 
-The [Blizzard EULA](https://www.blizzard.com/en-us/legal/08b946df-660a-40e4-a072-1fbde65173b1/blizzard-end-user-license-agreement), section 1.C.ii, prohibits unauthorized software allowing automated control of a game or part of a game, and broadly addresses unauthorized software facilitating game functionality. The [anti-cheating agreement](https://www.blizzard.com/legal/cd5930c0-2784-420c-a23d-1e0d6ff8599b/anti-cheating-vereinbarung) also addresses unauthorized third-party tools that change gameplay or collect information through the game.
+This changes the earlier clipboard-only restriction at the user's request. It does not establish Blizzard approval. Companion-generated paste and the addon context bridge remain unresolved policy questions. Preview 1 predates this change; the new source has compiled but has not completed runtime validation because Windows Smart App Control blocked earlier final runtime tests. No security policy was bypassed.
 
-A release-to-send chain that opens chat, selects text, pastes a dynamically routed draft, and presses Enter is external automation. No official exception approving this exact voice/chat design was located. A player starting the recording, using only one account, or accepting a YOLO checkbox does not itself establish Blizzard permission. The [input-broadcasting policy](https://news.blizzard.com/en-us/article/23558957/policy-update-for-input-broadcasting-software) concerns multiple clients; it is not permission for unrelated single-client automation.
-
-The shipped app has therefore been changed to drafting only:
-
-- The sending implementation and its Windows input-injection import have been removed.
-- The YOLO checkbox is visibly unavailable pending authorization.
-- Legacy `AutoSend=true` settings are ignored and always read back as false.
-- The player pastes and sends manually. The app's global keyboard hook observes push-to-talk; it generates no game keystrokes.
-
-Manual clipboard drafting removes the external sending mechanism. That is a narrower design, **not a blanket compliance guarantee**. The addon-rendered status strip decoded by an external companion also needs review because it deliberately transfers game context. Avoid assuming screen-based transport is permitted merely because it does not read game memory.
-
-The official [UI Add-On Development Policy](https://eu.forums.blizzard.com/en/wow/t/wow-user-interface-add-on-development-policy/1642) requires addons to follow the EULA and lists WoWUI@blizzard.com as an addon developer inquiry contact. Request written clarification for the exact Forever design: local push-to-talk recognition, intent classification, addon-displayed group/guild/channel context decoded from screen pixels, clipboard drafting, and the proposed optional synthetic chat-input sequence. Include that there is no memory/process injection, network interception, multi-client broadcasting, continuous listening, gameplay control, or scheduled/repeated message sending. Absence of those mechanisms does not itself prove permission.
-
-No inquiry has been sent. Any authorization would need to cover the actual mechanisms and Forever client, and be reviewed before adding a sending implementation back to the distributed app. API compatibility and policy authorization are separate gates.
+The EULA and policy links above remain relevant; the old blanket statement that this app generates no game input no longer describes the new controller-paste source. Keyboard dictation still supports external manual paste.

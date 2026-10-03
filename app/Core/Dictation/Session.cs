@@ -9,9 +9,8 @@ namespace SpeakForever.Dictation;
 
 /// <summary>
 /// One dictation at a time: record until you pause (or press the trigger again) → transcribe →
-/// copy to the clipboard, for you to paste into chat with Ctrl+V. Speak Forever never presses a
-/// key in the game. The text is then ready to paste until you paste it (Ctrl+V) or chat closes,
-/// and pressing the trigger again first cancels it. From the controller it only starts with the game's
+/// copy to the clipboard. A separate controller click requests paste; sending stays manual.
+/// Keyboard dictation retains its cancel-ready behavior. From the controller it only starts with the game's
 /// chat box open; the keyboard shortcut works any time, like Win+H.
 /// </summary>
 /// <param name="settings">The current settings; each dictation reads them once, at its start.</param>
@@ -31,6 +30,23 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     /// <summary>Text is on the clipboard, waiting to be pasted.</summary>
     public bool IsReady => ready;
 
+    /// <summary>A deliberate controller click pastes a ready draft once; never sends.</summary>
+    public string? PastePrepared(Func<string?> validate)
+    {
+        lock (gate)
+        {
+            if (active is not null || !ready) return "Wait for a ready draft before pasting.";
+            if (validate() is { } blocked) return blocked;
+            string? error = Native.PasteCopied(copied, out bool attempted);
+            if (attempted)
+            {
+                ready = false;
+                phase(DictationPhase.Idle);
+            }
+            return error;
+        }
+    }
+
     public RoutedDraft CopyEdited(string text) => CopyPrepared(() => route(text));
 
     public RoutedDraft CopyPrepared(Func<RoutedDraft> prepare)
@@ -38,6 +54,8 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         lock (gate)
         {
             if (active is not null) return new("", null, "Unconfirmed", "Wait for dictation to finish.", 0);
+            ready = false;
+            phase(DictationPhase.Idle);
             var draft = prepare();
             if (!draft.Ready) return draft;
             if (Native.CopyText(draft.ClipboardText!, out copied) is { } error)
