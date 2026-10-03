@@ -1,43 +1,52 @@
 # ForeverRoutedSpeech
 
-Speak. Choose the audience automatically. Paste and send with your controller.
+**A fork of [samsbase/SpeakForever](https://github.com/samsbase/SpeakForever), adding local audience routing to controller speech-to-chat drafts.** SpeakForever supplies the Windows app, controller capture and speech foundation. ForeverRoutedSpeech adds a persistent fastText classifier, a game-context addon and guarded chat drafts, and simplifies speech recognition to **Whisper Turbo q5_0 only**. Original MIT attribution and Git history are preserved; this is an independent fork, not an official upstream or Blizzard release.
 
-This is a public fork of [SpeakForever](https://github.com/samsbase/SpeakForever), based on commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`, with its MIT notice preserved. It adds a persistent fastText classifier after transcription. Source is published at [ryeceps/ForeverRoutedSpeech](https://github.com/ryeceps/ForeverRoutedSpeech). No binary release is published.
+## Download and preview status
 
-## Preview status
+Get the Windows x64 ZIP from [Releases](https://github.com/ryeceps/ForeverRoutedSpeech/releases). The first release is an **unsigned experimental prerelease**, not a validated gameplay release. Windows Smart App Control blocked final runtime tests on the development PC. Earlier component tests passed; final runtime validation, code signing and live Forever compatibility remain outstanding. Do not disable Windows security to run it. See [test results](docs/TEST-RESULTS.md).
 
-The final test run was blocked by **Windows Smart App Control**, which rejected the newly built unsigned `SpeakForever.Core.dll`. Earlier tests and the Turbo benchmark passed. The final preview must not be treated as a validated runnable release on this PC. A properly signed/trusted build is needed; Windows security settings have not been changed. No signing certificate is configured in this development workspace.
+Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required. The package contains the app, .NET runtime, native libraries, Turbo model, routing classifier, addon and Microsoft's signed VC runtime prerequisite. The launcher installs that prerequisite only if needed; Windows may request elevation. No model picker, API key or separate model download is required. Normal speech processing stays local and offline. GPU inference uses Vulkan where available, with CPU fallback. Wait for Ready after initial model loading.
 
-## One package, one speech model
+## Controller workflow
 
-Extract `ForeverRoutedSpeech-windows-x64.zip` and double-click `Start.cmd`. The launcher installs the included Microsoft runtime only when needed (Windows may ask for elevation), then opens `ForeverRoutedSpeech.exe`. Windows x64, Windows 10 2004 or newer. The portable package includes .NET, the native inference libraries, Microsoft's signed runtime prerequisite, the classifier, **Whisper Turbo q5_0**, and the addon probe. No model picker, API key, cloud transcription, or separate model download is needed. GPU inference uses the available Vulkan driver, with CPU fallback. First model loading can take time; wait for Ready.
+1. Open the game's chat input using your mapped controller button.
+2. Click the right stick to start recording, speak, then click it again to stop. Recording is capped at 30 seconds.
+3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft.
+4. Press your physical controller button mapped to **Ctrl+V** to paste. Press the game's mapped send button to send.
 
-With game chat open, click the right stick to record, speak, then click it again to finish. Recording waits for that click, with a 30-second cap. The overlay shows the message, destination, and reason. Use your physical controller button mapped to Ctrl+V to paste, then the game's send button. Clicking dictation while a copied draft waits cancels it. Microphone and controller bindings remain adjustable.
+The app itself never generates game key presses or sends messages. Recording clicks do not paste or send. The controller needs working game mappings for opening chat, pasting and sending. Microphone and recording bindings remain adjustable. Clicking dictation while a copied draft is waiting cancels that draft.
 
-The app copies text; it never generates game key presses or sends chat automatically. Blizzard approval for this particular integration has not been established; see [policy notes](docs/POLICY.md).
+## How audience routing works
 
-## Routing and game verification
+- **Explicit instruction first:** `Tell guild ...`, `Say to everyone around me ...`, or `Ask in trade ...` selects that audience and removes only the recognized instruction. An unavailable explicit destination keeps the draft waiting for another selection.
+- **Confident inference next:** trained guild-address intent can choose Guild. Public-channel inference for General, Trade and LFG is disabled in this preview until held-out precision meets the target. Explicit joined public channels still work; merely mentioning an item or guild does not establish an audience.
+- **Group default otherwise:** available Instance, then Raid, then Party, then Say. Custom channels require an explicit name or manual selection.
 
-Explicit instructions such as `Tell guild ...` or `Ask in trade ...` take precedence. Confident trained guild intent can select Guild. Ordinary conversation falls back through available Instance, Raid, Party, then Say. Trade/General/LFG inference remains disabled until held-out precision meets the target; explicit joined channels work. Custom channels use explicit names or manual confirmation.
+Editing the message or destination updates the clipboard when the draft is valid. Silence, transcription errors, unknown fields, invalid context and oversized messages do not replace it. Missing or stale context requires manual destination confirmation; oversized drafts require editing rather than truncation. Default operation retains no audio or transcript history and does not retrain during play.
 
-The addon status strip supplies group membership, joined channels and current numbers, verified prefixes and limits, and a heartbeat. Missing, invalid, or stale context preserves the clipboard and shows a confirmation panel. It does not assume a Forever message limit. Oversized messages need editing; they are not truncated. Transcripts are not written to the default log, and recordings are not retained.
+## Addon and game setup
 
-**This is an early test build. The actual Forever client compatibility probe, controller/microphone flow, UI scaling and occlusion tests, and live gameplay performance remain unverified.** Install the included addon using `scripts/Install-Addon.ps1` with the client's actual AddOns directory and Interface number. Follow the addon's probe instructions to verify destinations and message limits. These developer checks must be completed before a zero-configuration public release.
+The companion cannot read live SavedVariables. The addon renders a framed, checksummed pixel status strip four times per second; the companion captures that region to read group/guild state, joined channel names and current numbers, verified chat prefixes/limits, and heartbeat. Context becomes stale after two seconds. The addon preview can show text in a native field after you physically paste; the companion provides the pre-paste draft preview.
 
-Capture defaults match the addon strip's initial placement: game window `World of Warcraft`, client coordinates `(16,64)`, cell pitch 4 physical pixels. If scaling changes those values, adjust `%LOCALAPPDATA%/ForeverRoutedSpeech/capture.json`; a calibration wizard is not included yet. Settings are independent of upstream SpeakForever.
+Install the addon with `scripts/Install-Addon.ps1`, supplying the actual client's AddOns directory and Interface number. Follow [compatibility probe instructions](docs/COMPATIBILITY.md) before enabling destinations: Forever APIs, prefixes, limits and field recognition have not been verified on the actual client. Unsupported destinations stay disabled.
 
-Auction House dictation outputs plain text when the addon identifies a registered, verified focused search field. It adds no chat prefix. Unknown fields are blocked. The companion overlay previews text before paste; the addon preview shows the native text box after your physical paste.
+Capture defaults are game window `World of Warcraft`, client position `(16,64)` and a cell pitch of 4 physical pixels. Adjust `%LOCALAPPDATA%/ForeverRoutedSpeech/capture.json` if placement or scaling differs. No calibration wizard is included yet. Window movement, multiple monitors, scaling, occlusion and minimization require live testing.
 
-## Development
+**Auction House:** when fresh addon context identifies a registered, verified focused search field, dictation produces plain text with no chat prefix. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
 
-From this fork's directory:
+Blizzard approval for this particular integration has not been established. See [policy notes](docs/POLICY.md). Whispers, automatic sending, continuous listening and assistant answers are outside this preview.
+
+## Development and provenance
+
+Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream C# namespaces and some project filenames retain SpeakForever names. This fork uses its own app/settings identity. Upstream auto-updates are disabled.
 
 ```powershell
 ./scripts/Setup-Tools.ps1
-# CMake 3.31.6 must be available. Python 3.12 is used for training/Lua tests.
+# CMake 3.31.6 must be available; Python 3.12 is used for training/Lua tests.
 ./scripts/Build.ps1
 ```
 
-Dependencies and NuGet graphs are pinned. Setup verifies the SDK/compiler checksums. Build verifies the pinned Turbo download, runs core and real-classifier tests, then produces one self-contained ZIP. Native dependencies use pinned commits. For retraining, run `scripts/Train.ps1`; training uses held-out paraphrase families and writes the model hash and inference policy together. Retraining never runs during play.
+Dependencies, NuGet graphs, native commits and model checksums are pinned. The normal build verifies downloads, builds native libraries, runs core/routing/classifier tests and packages one self-contained ZIP. `scripts/Train.ps1` retrains explicitly using held-out paraphrase families. See [controller tests](docs/CONTROLLER-TEST.md) and [measured component results](docs/TEST-RESULTS.md).
 
-The original upstream `build.ps1`, installer, CLI and website are retained for source provenance; the fork workflow only builds and tests and never publishes releases; use the fork's `scripts/Build.ps1` for this package. Upstream auto-updates are disabled. The legacy WPF experiment in the enclosing workspace is not this fork's app.
+The original upstream `build.ps1`, installer, CLI and website are retained for provenance; use this fork's `scripts/Build.ps1`. CI compiles and tests source without automatically publishing installers. Prereleases are published separately with their validation status and checksums.

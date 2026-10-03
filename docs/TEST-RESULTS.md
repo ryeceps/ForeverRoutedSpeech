@@ -9,7 +9,7 @@
 - Actual Whisper Turbo q5_0 recognition of a three-second 16 kHz mono JFK sample took 0.355 seconds on Intel UHD Graphics through Vulkan. First model load/warm-up took 48.48 seconds; this is separate from per-recording recognition. Peak process working set was approximately 665 MiB, excluding GPU memory.
 - The WinUI app builds and publishes with zero warnings/errors. The package includes its .NET runtime, model and inference dependencies, plus Microsoft's signed, checksummed VC runtime installer for machines that need it.
 
-These are local component/mock results, not a Forever gameplay test. Release-to-copied-draft latency with the actual microphone, gameplay impact, VRAM use, gamepad mapping, Forever addon/API/message-limit compatibility, capture under movement/scaling/occlusion, and visual QA of the running WinUI windows remain unmeasured. No Blizzard approval or GitHub publication is claimed.
+These are local component/mock results, not a Forever gameplay test. Release-to-copied-draft latency with the actual microphone, gameplay impact, VRAM use, gamepad mapping, Forever addon/API/message-limit compatibility, capture under movement/scaling/occlusion, and visual QA of the running WinUI windows remain unmeasured. Source is published on GitHub. No Blizzard approval or successful final runtime validation is claimed.
 
 ## Final validation blocker
 
