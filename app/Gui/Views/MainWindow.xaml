@@ -83,7 +83,7 @@
             </Grid>
 
             <!-- First run: the two things it needs, in order, over the whole window until they're done. -->
-            <ScrollViewer x:Name="SetupPage" Grid.RowSpan="2" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer x:Name="SetupPage" Grid.RowSpan="2" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="True">
                 <StackPanel Padding="24,6,24,22" Spacing="12">
                     <StackPanel Spacing="4" Margin="0,0,0,8">
                         <TextBlock Text="Let's get you talking" FontFamily="{StaticResource Cinzel}" FontSize="27" FontWeight="SemiBold"
@@ -153,14 +153,17 @@
             </ScrollViewer>
 
             <!-- Home: what it's doing and what to press next. The log fills whatever height is left. -->
-            <Grid x:Name="DictationPage" Grid.Row="1" RowSpacing="14" Padding="0,16,0,18">
+            <ScrollViewer x:Name="DictationPage" Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                          VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="True"
+                          AutomationProperties.Name="Home page; move the right stick up or down to scroll">
+                <Grid RowSpacing="14" Padding="0,16,12,18">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <!-- What needs attention first: the game not found, no speech model, an update. -->
                 <StackPanel Spacing="12">
@@ -260,7 +263,7 @@
                                  Foreground="{StaticResource ArcaneBrush}" Click="ActivityToggle_Click" />
 
                 <!-- Styled like a WoW chat frame. -->
-                <Border x:Name="LogBorder" Grid.Row="5" Visibility="Collapsed" Background="{StaticResource ChatBrush}" BorderBrush="{StaticResource CardLineBrush}"
+                <Border x:Name="LogBorder" Grid.Row="5" MaxHeight="220" Visibility="Collapsed" Background="{StaticResource ChatBrush}" BorderBrush="{StaticResource CardLineBrush}"
                         BorderThickness="1" CornerRadius="6">
                     <ListView x:Name="LogList" SelectionMode="None" Padding="0,4">
                         <ListView.ItemContainerStyle>
@@ -277,9 +280,10 @@
                         </ListView.ItemTemplate>
                     </ListView>
                 </Border>
-            </Grid>
+                </Grid>
+            </ScrollViewer>
 
-            <ScrollViewer x:Name="ModelPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer x:Name="ModelPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="True">
                 <StackPanel Padding="0,16,0,18" Spacing="14">
                     <!-- The model in use (or the one to get), and whether it's working. -->
                     <ContentControl Style="{StaticResource Frame}" Padding="20,16">
@@ -345,7 +349,7 @@
             </ScrollViewer>
 
             <!-- A tab stop so recording a keyboard shortcut can move focus off the buttons (Space would press them). -->
-            <ScrollViewer x:Name="ButtonsPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" IsTabStop="True">
+            <ScrollViewer x:Name="ButtonsPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="True">
                 <StackPanel Padding="0,16,0,18">
                 <ContentControl Style="{StaticResource Card}">
                     <StackPanel Spacing="14">
@@ -399,7 +403,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <ScrollViewer x:Name="SettingsPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer x:Name="SettingsPage" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="True">
                 <StackPanel Padding="0,16,0,18" Spacing="14">
                     <ContentControl Style="{StaticResource Card}">
                         <StackPanel Spacing="8">

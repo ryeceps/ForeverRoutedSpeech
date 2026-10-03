@@ -58,6 +58,9 @@ public sealed class Engine : IAsyncDisposable
     /// <summary>Raised on a background thread whenever any of the state properties change.</summary>
     public event Action? StateChanged;
 
+    /// <summary>Right-stick vertical position for companion UI scrolling; up is positive.</summary>
+    public event Action<float>? UiScrollRequested;
+
     /// <summary>Raised on a background thread with each dictation: text, transcription time, audio seconds.</summary>
     public event Action<string, TimeSpan, double>? Transcribed;
 
@@ -427,6 +430,7 @@ public sealed class Engine : IAsyncDisposable
         using var _ = reader;
         uint prev = 0;
         long nextScan = 0;
+        long nextUiScroll = 0;
         while (!ct.IsCancellationRequested)
         {
             PadState? read = reader.Read();
@@ -465,6 +469,11 @@ public sealed class Engine : IAsyncDisposable
                 if (probe && (cur & ~prev) != 0) Log.Info($"Held: {Gamepad.Describe(cur)}");
                 OnButtons(prev, cur, probe);
                 prev = cur;
+            }
+            if (read is { } uiPad && Math.Abs(uiPad.RightY) >= 0.35f && Environment.TickCount64 >= nextUiScroll)
+            {
+                nextUiScroll = Environment.TickCount64 + 120;
+                UiScrollRequested?.Invoke(uiPad.RightY);
             }
             if (radialMenu.IsOpen && read is { } pad) OnRightStick(pad.RightX, pad.RightY);
             // Ctrl+V pastes it, Enter sends a chat message and Esc closes chat: any of them, and the

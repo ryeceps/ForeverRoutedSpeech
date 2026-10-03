@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
     readonly Brush normalBrush = Brush("PaleArcaneBrush");
     readonly Brush warningBrush = Brush("WarningBrush");
     bool updating, shutDown;
+    volatile bool windowActive;
     ButtonStyle? shownStyle; // the controller whose icons are showing
     DictationPhase phase;
 
@@ -63,6 +64,19 @@ public sealed partial class MainWindow : Window
             return;
         }
         engine.StateChanged += () => DispatcherQueue.TryEnqueue(UpdateState);
+        engine.UiScrollRequested += position =>
+        {
+            if (!windowActive) return;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!windowActive || shutDown || recording != Recording.None) return;
+                var page = SetupPage.Visibility == Visibility.Visible ? SetupPage :
+                    DictationPage.Visibility == Visibility.Visible ? DictationPage :
+                    ModelPage.Visibility == Visibility.Visible ? ModelPage :
+                    ButtonsPage.Visibility == Visibility.Visible ? ButtonsPage : SettingsPage;
+                page.ChangeView(null, Math.Clamp(page.VerticalOffset - position * 70, 0, page.ScrollableHeight), null, disableAnimation: true);
+            });
+        };
         engine.Transcribed += (text, took, seconds) => DispatcherQueue.TryEnqueue(() => ShowHeard(text, took, seconds));
         engine.PhaseChanged += phase => DispatcherQueue.TryEnqueue(() =>
         {
@@ -94,7 +108,8 @@ public sealed partial class MainWindow : Window
         RefreshMics(); // and the rest of the state
         Activated += (_, e) =>
         {
-            if (e.WindowActivationState != WindowActivationState.Deactivated) RefreshMics();
+            windowActive = e.WindowActivationState != WindowActivationState.Deactivated;
+            if (windowActive) RefreshMics();
         };
         Root.Loaded += async (_, _) =>
         {
