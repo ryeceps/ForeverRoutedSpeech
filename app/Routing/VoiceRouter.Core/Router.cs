@@ -57,6 +57,22 @@ public sealed class Router(InferencePolicy policy)
         return new(null, null, scores, RouteReason.ConfirmationRequired, "No verified destination is available.", message);
     }
 
+    /// <summary>Preview/copy without game context. The 4096-byte cap is a draft cap, not a verified game limit.</summary>
+    public static ChatDraft StandaloneDraft(Transcript transcript)
+    {
+        string message=transcript.Text.Trim();
+        if(transcript.Status!=TranscriptionStatus.Success || message.Length==0)
+            return new(message,null,false,"No successful speech transcript; clipboard retained.");
+        var instruction=ParseExplicit(message,null,EmptyScores);
+        if(instruction is not null && instruction.Destination!=Destination.Say)
+            return new(instruction.Message,null,false,"Game context is unavailable. Confirm the explicitly requested destination; it was not changed to Say.");
+        if(instruction is not null) message=instruction.Message;
+        var decision=new RouteDecision(Destination.Say,null,EmptyScores,RouteReason.SayDefault,
+            "Standalone Say draft; no game context. The game prefix and length limit are unverified. Controller paste is disabled until game context is verified.",message);
+        var draft=Draft(message,decision,null,false,true,"/say",4096,true);
+        return draft.Valid ? draft with {Explanation=decision.Explanation} : draft;
+    }
+
     private static RouteDecision? ParseExplicit(string text, GameContext? context, IReadOnlyDictionary<Destination, double> scores)
     {
         var candidates = Names.Concat(context?.Channels.Where(c => c.Kind == Destination.Custom).Select(c => (Destination.Custom, c.Name)) ?? []);

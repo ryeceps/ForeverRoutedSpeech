@@ -23,7 +23,11 @@ The third controller click generates one Ctrl+V shortcut. It does not open chat,
 - **Confident inference next:** trained guild-address intent can choose Guild. Public-channel inference for General, Trade and LFG is disabled in this preview until held-out precision meets the target. Explicit joined public channels still work; merely mentioning an item or guild does not establish an audience.
 - **Otherwise use the active chat panel, then Say:** a known, available active destination is preserved, including a joined numbered/custom channel. Group membership alone no longer changes the audience. Explicit instructions and confident classifier inference still take priority in chat.
 
-Editing the message or destination updates the clipboard when the draft is valid. Silence, transcription errors, unknown fields, invalid context and oversized messages do not replace it. Missing or stale context requires manual destination confirmation; oversized drafts require editing rather than truncation. Default operation retains no audio or transcript history and does not retrain during play.
+Editing the message or destination updates the clipboard when the draft is valid. Silence, transcription errors, unknown fields, invalid context and oversized messages do not replace it. Explicit destinations require confirmation with missing or stale context; ordinary speech can use standalone Say; oversized drafts require editing rather than truncation. Default operation retains no audio or transcript history and does not retrain during play.
+
+## Standalone testing
+
+Without game context, ordinary speech can preview and copy `/say <message>` as a standalone draft. No group/channel inference or controller paste is allowed in this state. The 4096-byte draft cap is not a verified game message limit. Explicit Guild/Trade/custom requests still require confirmation and are never silently redirected to Say. A previously observed stale search field remains blocked instead of being reinterpreted as chat. Manual paste remains available for testing.
 
 ## Addon and game setup
 
@@ -33,7 +37,7 @@ Install the addon with `scripts/Install-Addon.ps1`, supplying the actual client'
 
 Capture defaults are game window `World of Warcraft`, client position `(16,64)` and a cell pitch of 4 physical pixels. Adjust `%LOCALAPPDATA%/ForeverRoutedSpeech/capture.json` if placement or scaling differs. No calibration wizard is included yet. Window movement, multiple monitors, scaling, occlusion and minimization require live testing.
 
-**Auction House and other search boxes:** when fresh addon context identifies a registered, verified focused search field, dictation preserves the whole transcript as plain text with no chat prefix. Search text bypasses the chat classifier, so even words like ìTell guildî remain part of the query. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
+**Auction House and other search boxes:** when fresh addon context identifies a registered, verified focused search field, dictation preserves the whole transcript as plain text with no chat prefix. Search text bypasses the chat classifier, so even words like ‚ÄúTell guild‚Äù remain part of the query. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
 
 Blizzard approval for this particular integration has not been established. See [policy notes](docs/POLICY.md). Whispers, automatic sending, continuous listening and assistant answers are outside this preview.
 

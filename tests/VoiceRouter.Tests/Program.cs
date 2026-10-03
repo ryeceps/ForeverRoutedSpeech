@@ -158,5 +158,14 @@ Check(PasteContext.Validate(activeParty,activeParty with {ActiveDestination=Dest
 string v3=v2.Replace("2\t12345","3\t12345")+"\tTrade\t4";
 Check(StatusProtocol.Decode(Frame(v3)).ActiveChannelId==4,"v3 active channel decoded");
 Reject(Frame(v3.Replace("Trade\t4","Custom\t0")),"invalid active channel rejected");
+Check(Router.StandaloneDraft(new("hello",TranscriptionStatus.Success)).ClipboardText=="/say hello","standalone Say copies without context");
+Check(Router.StandaloneDraft(new("Tell everyone around me hello",TranscriptionStatus.Success)).ClipboardText=="/say hello","standalone explicit Say");
+Check(!Router.StandaloneDraft(new("Tell guild hello",TranscriptionStatus.Success)).Valid,"standalone preserves unavailable explicit audience");
+Check(!Router.StandaloneDraft(new("Ask in trade selling ore",TranscriptionStatus.Success)).Valid,"standalone never redirects Trade to Say");
+Check(!Router.StandaloneDraft(new("/logout",TranscriptionStatus.Success)).Valid,"standalone leading command blocked");
+Check(!Router.StandaloneDraft(new("hello\nthere",TranscriptionStatus.Success)).Valid,"standalone multiline blocked");
+Check(!Router.StandaloneDraft(new("hello",TranscriptionStatus.Silence)).Valid,"standalone silence blocked");
+Check(!Router.StandaloneDraft(new(new string('a',4097),TranscriptionStatus.Success)).Valid,"standalone oversize requires editing");
+Check(Router.StandaloneDraft(new("Hello 世界",TranscriptionStatus.Success)).ClipboardText=="/say Hello 世界","standalone Unicode preserved");
 var timer = Stopwatch.StartNew(); for(int i=0;i<10000;i++) Route("Hey, what's going on?",Context(GroupCategory.Party)); timer.Stop();
 Console.WriteLine($"PASS: {passed} assertions. Deterministic routing mean: {timer.Elapsed.TotalMilliseconds/10000:F4} ms (no native inference).");

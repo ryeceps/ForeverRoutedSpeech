@@ -522,6 +522,9 @@ public sealed class Engine : IAsyncDisposable
             case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when router.FocusedFieldAvailable && !probe:
                 ControllerDictation(b.Dictate.Text);
                 break;
+            case ChatAction.DictateWhileClosed when router.StandaloneAvailable && !probe:
+                ControllerDictation(b.Dictate.Text);
+                break;
             // Often a binding of its own in the game, so these are noted, not complained about.
             case ChatAction.DictateWhileClosed:
                 Log.Info($"{b.Dictate.Text} with chat closed: nothing to dictate into.");

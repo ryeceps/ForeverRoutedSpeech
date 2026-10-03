@@ -38,8 +38,12 @@ using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? th
     Check(router.Confirm("Hello friends","/say",255,true).ClipboardText=="/say Hello friends","Manual confirmed route");
     Check(!router.Confirm("Hello friends","/logout",255,true).Ready,"Manual invalid command rejected");
     missing=false;context=context with {Heartbeat=5,FocusedText=null};router.RefreshContext();
+    missing=true;router.RefreshContext();
+    Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Missing chat context uses standalone Say");
+    Check(!router.Prepare("Tell guild hello").Ready,"Missing context retains explicit audience");
+    missing=false;router.RefreshContext();
     Thread.Sleep(2100);
-    Check(!router.Prepare("Hello friends").Ready,"Repeated heartbeat goes stale");
+    Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Stale chat context uses standalone Say");
     var times=new List<double>();
     for(uint i=6;i<106;i++) {context=context with {Heartbeat=i};router.RefreshContext();times.Add(router.Prepare("Hello friends").RoutingMilliseconds);}
     Console.WriteLine($"Routing checks: {checks}; mean {times.Average():F3} ms; max {times.Max():F3} ms (capture excluded).");

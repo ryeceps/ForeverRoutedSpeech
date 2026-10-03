@@ -54,6 +54,10 @@ public sealed class DraftRouter : IDisposable
     }
     public void RefreshContext() => Poll();
     public bool ClassifierLoaded => handle != 0;
+    public bool StandaloneAvailable
+    {
+        get {lock(gate) return !tracker.IsFresh(clock.Elapsed) && tracker.Current?.FocusedText is null;}
+    }
     public bool FocusedFieldAvailable
     {
         get {lock(gate) return tracker.IsFresh(clock.Elapsed) && tracker.Current?.FocusedText?.Kind is TextFieldKind.AuctionHouse or TextFieldKind.Search;}
@@ -80,6 +84,13 @@ public sealed class DraftRouter : IDisposable
             {
                 var field=TextDrafts.Prepare(new(text,TranscriptionStatus.Success),target,fresh);
                 return new(text,field.Valid ? text : null,target.Name,field.Explanation,timing.Elapsed.TotalMilliseconds);
+            }
+            if(!fresh)
+            {
+                copiedContext=null; // standalone clipboard text must never acquire a game paste target later
+                var standalone=Router.StandaloneDraft(new(text,TranscriptionStatus.Success));
+                return new(standalone.Message,standalone.ClipboardText,standalone.Valid ? "Say (standalone)" : "Unconfirmed",
+                    standalone.Explanation,timing.Elapsed.TotalMilliseconds);
             }
             var scores=new Dictionary<Destination,double>();
             if(handle!=0 && fresh)
