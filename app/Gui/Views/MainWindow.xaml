@@ -6,7 +6,7 @@
     xmlns:controls="using:SpeakForever.Gui.Controls"
     xmlns:models="using:SpeakForever.Gui.Models"
     xmlns:presentation="using:SpeakForever.Presentation"
-    Title="Speak Forever">
+    Title="ForeverRoutedSpeech">
 
     <Grid x:Name="Root" Background="{StaticResource WindowBackground}">
         <Grid.RowDefinitions>
@@ -61,7 +61,7 @@
         <Grid x:Name="TitleBar" Height="60" Padding="18,0,0,0">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                 <controls:LogoView x:Name="Logo" Width="38" Height="38" />
-                <TextBlock Text="Speak Forever" FontFamily="{StaticResource Cinzel}" FontSize="21" FontWeight="SemiBold"
+                <TextBlock Text="ForeverRoutedSpeech" FontFamily="{StaticResource Cinzel}" FontSize="21" FontWeight="SemiBold"
                            Foreground="{StaticResource StarlightBrush}" CharacterSpacing="60" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
@@ -76,7 +76,7 @@
                 <Rectangle Height="1" VerticalAlignment="Bottom" Fill="{StaticResource CardLineBrush}" Margin="-22,0" />
                 <SelectorBar x:Name="Tabs" Margin="-12,0,0,0" SelectionChanged="Tabs_SelectionChanged">
                     <SelectorBarItem Text="Home" FontSize="14" IsSelected="True" />
-                    <SelectorBarItem Text="Voice model" FontSize="14" />
+                    <SelectorBarItem Text="Audio" FontSize="14" />
                     <SelectorBarItem Text="Controls" FontSize="14" />
                     <SelectorBarItem Text="Settings" FontSize="14" />
                 </SelectorBar>
@@ -115,7 +115,7 @@
                                 <ProgressBar x:Name="SetupProgressBar" Maximum="1" Height="6" />
                                 <Grid>
                                     <TextBlock x:Name="SetupProgressText" Style="{StaticResource Caption}" VerticalAlignment="Center" />
-                                    <HyperlinkButton Content="Choose a different model" HorizontalAlignment="Right" Padding="4,2" FontSize="13"
+                                    <HyperlinkButton Visibility="Collapsed" Content="Choose a different model" HorizontalAlignment="Right" Padding="4,2" FontSize="13"
                                                      Foreground="{StaticResource ArcaneBrush}" Click="SetupOtherModel_Click" />
                                 </Grid>
                             </StackPanel>
@@ -145,7 +145,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <CheckBox x:Name="StartupCheck" Content="Start Speak Forever when I sign in to Windows" VerticalAlignment="Center"
+                        <CheckBox x:Name="StartupCheck" Content="Start ForeverRoutedSpeech when I sign in to Windows" VerticalAlignment="Center"
                                   Click="StartupCheck_Click" />
                         <Button x:Name="SetupDoneButton" Grid.Column="1" Click="SetupDoneButton_Click" />
                     </Grid>
@@ -200,12 +200,21 @@
                     <StackPanel Spacing="6">
                         <Grid>
                             <TextBlock Text="Last message" Style="{StaticResource Label}" VerticalAlignment="Center" />
-                            <Button x:Name="CopyHeardButton" Content="Copy" Style="{StaticResource QuietButton}" MinHeight="0" Padding="8,2"
+                            <Button x:Name="CopyHeardButton" Content="Validate &amp; copy" Style="{StaticResource QuietButton}" MinHeight="0" Padding="8,2"
                                     HorizontalAlignment="Right" Visibility="Collapsed" Click="CopyHeardButton_Click" />
                         </Grid>
                         <RichTextBlock x:Name="LastHeardHint" FontSize="14" Foreground="{StaticResource BodyBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="False" />
-                        <TextBlock x:Name="LastHeardText" FontSize="16" Foreground="{StaticResource BrightBrush}"
-                                   TextWrapping="Wrap" IsTextSelectionEnabled="True" Visibility="Collapsed" />
+                        <TextBox x:Name="LastHeardText" FontSize="16" Foreground="{StaticResource BrightBrush}"
+                                   TextWrapping="Wrap" AcceptsReturn="False" Visibility="Collapsed" />
+                        <Expander x:Name="ManualRoutePanel" Header="Confirm destination" Visibility="Collapsed">
+                            <StackPanel Spacing="6">
+                                <TextBox x:Name="ManualPrefix" Header="Chat destination" PlaceholderText="Verified command, such as /g or /2" />
+                                <NumberBox x:Name="ManualLimit" Header="Verified client message limit" Minimum="0" Maximum="10000" Value="0" />
+                                <CheckBox x:Name="ManualBytes" Content="The limit is measured in UTF-8 bytes" IsChecked="True" />
+                                <CheckBox x:Name="ConfirmDestination" Content="I checked this destination and message limit in the game" />
+                                <Button Content="Confirm and copy" Click="ConfirmRoute_Click" />
+                            </StackPanel>
+                        </Expander>
                         <TextBlock x:Name="LastHeardMeta" Style="{StaticResource Caption}" Visibility="Collapsed" />
                         <TextBlock x:Name="LastHeardTooLong" FontSize="13" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"
                                    IsTextSelectionEnabled="True" Visibility="Collapsed" />
@@ -305,7 +314,7 @@
                         </Grid>
                     </ContentControl>
 
-                    <ContentControl Style="{StaticResource Card}" Padding="16,10,16,8">
+                    <ContentControl Visibility="Collapsed" Style="{StaticResource Card}" Padding="16,10,16,8">
                         <StackPanel>
                             <TextBlock Text="Other models" Style="{StaticResource Label}" Margin="0,4,0,2" />
                             <!-- Filled in code: one row per downloadable model, plus any the user added. -->
@@ -316,7 +325,7 @@
                         </StackPanel>
                     </ContentControl>
 
-                    <ContentControl Style="{StaticResource Card}">
+                    <ContentControl Visibility="Collapsed" Style="{StaticResource Card}">
                         <StackPanel Spacing="4">
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
@@ -396,7 +405,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Microphone" Style="{StaticResource FrameHeader}" />
                             <TextBlock Style="{StaticResource Caption}"
-                                       Text="The one Speak Forever listens to. Default follows the one set in Windows' sound settings." />
+                                       Text="The one ForeverRoutedSpeech listens to. Default follows the one set in Windows' sound settings." />
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -420,7 +429,7 @@
                         </StackPanel>
                     </ContentControl>
 
-                    <ContentControl Style="{StaticResource Card}">
+                    <ContentControl Visibility="Collapsed" Style="{StaticResource Card}">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Updates" Style="{StaticResource FrameHeader}" />
                             <Grid ColumnSpacing="12">
@@ -446,8 +455,8 @@
                     <ContentControl x:Name="StartupCard" Style="{StaticResource Card}" Visibility="Collapsed">
                         <StackPanel Spacing="8">
                             <TextBlock Text="Startup" Style="{StaticResource FrameHeader}" />
-                            <ToggleSwitch x:Name="StartupSwitch" OnContent="Start Speak Forever when I sign in to Windows"
-                                          OffContent="Start Speak Forever when I sign in to Windows" Toggled="StartupSwitch_Toggled" />
+                            <ToggleSwitch x:Name="StartupSwitch" OnContent="Start ForeverRoutedSpeech when I sign in to Windows"
+                                          OffContent="Start ForeverRoutedSpeech when I sign in to Windows" Toggled="StartupSwitch_Toggled" />
                         </StackPanel>
                     </ContentControl>
                 </StackPanel>

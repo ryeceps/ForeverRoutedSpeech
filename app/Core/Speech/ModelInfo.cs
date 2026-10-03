@@ -13,7 +13,8 @@ namespace SpeakForever.Speech;
 /// <param name="Advanced">No better than another model for most people, so listed out of the way.</param>
 public sealed record ModelInfo(string File, string Name, string Blurb, long DownloadBytes, string Sha256, double MemoryGb, bool Recommended = false, bool Advanced = false)
 {
-    public string LocalPath => Path.Combine(AppPaths.Models, File);
+    public string LocalPath => System.IO.File.Exists(Path.Combine(AppContext.BaseDirectory, "models", File))
+        ? Path.Combine(AppContext.BaseDirectory, "models", File) : Path.Combine(AppPaths.Models, File);
     public bool IsInstalled => System.IO.File.Exists(LocalPath);
     public string Summary => $"{FormatBytes(DownloadBytes)} download · uses about {MemoryGb:F1} GB of memory";
 

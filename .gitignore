@@ -9,3 +9,15 @@ dist/
 
 # Microsoft's Visual C++ runtime installer: build.ps1 -Installer downloads it (24 MB, signed by Microsoft).
 installer/redist/
+
+# Fork tooling and large model downloads
+.tools/
+native/build/
+training/generated/
+**/__pycache__/
+models/*.bin
+!models/router.bin
+models/*.download
+*.user
+
+artifacts/

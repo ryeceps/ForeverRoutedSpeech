@@ -3,7 +3,7 @@ using Windows.UI.ViewManagement;
 
 namespace SpeakForever.Gui.Controls;
 
-/// <summary>The Speak Forever logo, which comes alive while it listens and transcribes.</summary>
+/// <summary>The ForeverRoutedSpeech logo, which comes alive while it listens and transcribes.</summary>
 public sealed partial class LogoView : UserControl
 {
     static readonly UISettings Settings = new();

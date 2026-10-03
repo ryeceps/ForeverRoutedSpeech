@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <TargetFramework>net10.0-windows</TargetFramework>
+  <RootNamespace>SpeakForever.Routing</RootNamespace>
+  <AnalysisLevel>none</AnalysisLevel><NoWarn>$(NoWarn);SYSLIB1054</NoWarn>
+  <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  <GenerateDocumentationFile>false</GenerateDocumentationFile>
+ </PropertyGroup>
+ <ItemGroup>
+  <ProjectReference Include="VoiceRouter.Core/VoiceRouter.Core.csproj" />
+  <PackageReference Include="System.Drawing.Common" />
+  <Compile Remove="VoiceRouter.Core/**/*.cs" />
+ </ItemGroup>
+</Project>

@@ -3,7 +3,7 @@
     x:Class="SpeakForever.Gui.Views.OverlayWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Speak Forever overlay">
+    Title="ForeverRoutedSpeech overlay">
 
     <!-- The window is sized to the pill in code, and see-through around its rounded ends (ClearBackdrop). -->
     <Grid x:Name="Root" Background="Transparent">

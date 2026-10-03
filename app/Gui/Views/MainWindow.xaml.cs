@@ -13,7 +13,6 @@ using SpeakForever.Input;
 using SpeakForever.Logging;
 using SpeakForever.Presentation;
 using SpeakForever.Speech;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Graphics;
 
@@ -71,6 +70,16 @@ public sealed partial class MainWindow : Window
             Logo.Show(phase);
             UpdateState();
             UpdateOverlay();
+        });
+        engine.DraftPrepared += draft => DispatcherQueue.TryEnqueue(() =>
+        {
+            tooLong = !draft.Ready;
+            LastHeardText.Text = draft.Message;
+            LastHeardMeta.Text = $" · {draft.Destination} · routing {draft.RoutingMilliseconds:F2} ms";
+            LastHeardTooLong.Text = draft.Reason;
+            LastHeardTooLong.Visibility = Visibility.Visible;
+            ManualRoutePanel.Visibility = draft.Ready ? Visibility.Collapsed : Visibility.Visible;
+            RefitOverlay();
         });
         engine.TooLong += leftOut => DispatcherQueue.TryEnqueue(() => ShowTooLong(leftOut));
         Recorder.Level += level => DispatcherQueue.TryEnqueue(() => overlay?.ShowLevel(level));
@@ -232,9 +241,19 @@ public sealed partial class MainWindow : Window
 
     void CopyHeardButton_Click(object sender, RoutedEventArgs e)
     {
-        var data = new DataPackage();
-        data.SetText(LastHeardText.Text);
-        Clipboard.SetContent(data);
+        var draft = engine!.CopyEditedDraft(LastHeardText.Text);
+        LastHeardTooLong.Text = draft.Reason;
+        LastHeardTooLong.Visibility = Visibility.Visible;
+
+    }
+
+    void ConfirmRoute_Click(object sender, RoutedEventArgs e)
+    {
+        if (ConfirmDestination.IsChecked != true) return;
+        int limit = double.IsFinite(ManualLimit.Value) ? (int)ManualLimit.Value : 0;
+        var draft = engine!.ConfirmDraft(LastHeardText.Text, ManualPrefix.Text.Trim(), limit, ManualBytes.IsChecked == true);
+        LastHeardTooLong.Text = draft.Reason;
+        LastHeardTooLong.Visibility = Visibility.Visible;
     }
 
     /// <summary>The activity log is for when something goes wrong, so it stays folded away until asked for.</summary>

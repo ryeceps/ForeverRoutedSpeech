@@ -189,7 +189,7 @@ public sealed partial class MainWindow
         if (await SetShortcutAsync(shortcut) is { } error)
             EndKeyboardRecording(error + " No change.", warning: true, changed: false);
         else
-            EndKeyboardRecording($"Keyboard shortcut is now {shortcut}. While Speak Forever is active, Windows sends {shortcut} to it instead of the program you're in.",
+            EndKeyboardRecording($"Keyboard shortcut is now {shortcut}. While ForeverRoutedSpeech is active, Windows sends {shortcut} to it instead of the program you're in.",
                                  warning: false, changed: true);
 
         static bool Down(VirtualKey k) => InputKeyboardSource.GetKeyStateForCurrentThread(k).HasFlag(CoreVirtualKeyStates.Down);

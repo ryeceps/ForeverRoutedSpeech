@@ -73,7 +73,7 @@ public sealed record Config
     /// Puts WoW: Forever names back where Whisper wrote something that sounds like one but isn't a
     /// real word ("Stratham" becomes Stratholme). Real words are never changed.
     /// </summary>
-    public bool CorrectNames { get; init; } = true;
+    public bool CorrectNames { get; init; }
 
     /// <summary>Settings earlier versions had: dropped from an old file rather than refused as misspelt.</summary>
     static readonly string[] RemovedSettings = ["RedoChord", "GameFolder", "ProcessNames"];
@@ -102,12 +102,14 @@ public sealed record Config
 
     /// <summary>A pause this long ends the recording. Pressing the dictate button again ends it straight away.</summary>
     public int SilenceMs { get; init; } = 1500;
+    /// <summary>Legacy pause finishing; the controller fork waits for the second click.</summary>
+    public bool FinishOnPause { get; init; }
 
     /// <summary>Give up if no speech starts within this long.</summary>
     public int NoSpeechTimeoutSeconds { get; init; } = 6;
 
     /// <summary>Only a guard against a microphone that never goes quiet; far longer than a chat message.</summary>
-    public int MaxSeconds { get; init; } = 120;
+    public int MaxSeconds { get; init; } = 30;
 
     /// <summary>How far above the measured background noise counts as speech.</summary>
     public double SpeechThresholdDb { get; init; } = 10;
@@ -121,7 +123,9 @@ public sealed record Config
     public bool ShowOverlay { get; init; } = true;
 
     /// <summary>Checks for updates on GitHub at launch and every few hours.</summary>
-    public bool CheckForUpdates { get; init; } = true;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Kept for settings compatibility; upstream updates are disabled in this fork.")]
+    public bool CheckForUpdates { get => false; init { } } // Fork updates must not install upstream releases.
+
 
     static readonly JsonSerializerOptions Json = new()
     {

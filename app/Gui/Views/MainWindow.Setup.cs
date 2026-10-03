@@ -16,7 +16,7 @@ namespace SpeakForever.Gui.Views;
 public sealed partial class MainWindow
 {
     // The installer's name for the sign-in entry too, so its uninstaller removes the app's own.
-    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run", RunValue = "Speak Forever";
+    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run", RunValue = "ForeverRoutedSpeech";
     static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
     bool inSetup;

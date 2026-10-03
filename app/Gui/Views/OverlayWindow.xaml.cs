@@ -107,7 +107,7 @@ public sealed partial class OverlayWindow : Window
         }
         Pill.Width = width;
         Pill.Height = height;
-        Pill.CornerRadius = new CornerRadius(height / 2);
+        Pill.CornerRadius = new CornerRadius(24);
         if (shown) Place(); // refitted while up: the window follows the pill
     }
 

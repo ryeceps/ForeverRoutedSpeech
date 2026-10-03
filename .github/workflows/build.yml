@@ -1,77 +1,27 @@
-# Builds and tests every pull request. On main, also builds the installer and, when the version in
-# Directory.Build.props is new, publishes it as a GitHub release: the app's update check finds it there.
+# Source validation only. Signing and live-client verification precede binary releases.
 name: Build
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-
 permissions:
-  contents: write # creating releases
-
+  contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-
-      - name: Install Inno Setup
-        if: github.event_name != 'pull_request'
-        shell: pwsh
-        # Pinned to the version the installer script is built with, from Inno Setup's own GitHub releases.
-        run: |
-          $setup = "$env:RUNNER_TEMP\innosetup-6.7.3.exe"
-          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $setup
-          $signature = Get-AuthenticodeSignature $setup
-          if ($signature.Status -ne 'Valid') { throw "Inno Setup's installer isn't validly signed ($($signature.Status))." }
-          Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER' -Wait
-
-      - name: Test
-        if: github.event_name == 'pull_request'
-        run: dotnet test --project tests/SpeakForever.Core.Tests -c Release
-
-      - name: Build the app and installer
-        if: github.event_name != 'pull_request'
-        shell: pwsh
-        run: ./build.ps1 -Installer -Repository '${{ github.repository }}'
-
-      - name: Read the version
-        if: github.event_name != 'pull_request'
-        id: version
-        shell: pwsh
-        run: |
-          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ }
-          "version=$version" >> $env:GITHUB_OUTPUT
-
-      - name: Keep the installer with this run
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v7
-        with:
-          name: SpeakForever-Setup-${{ steps.version.outputs.version }}
-          path: dist/SpeakForever-Setup-${{ steps.version.outputs.version }}.exe
-
-      - name: Publish a release for a new version
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          $tag = "v$env:VERSION"
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) {
-            "Release $tag already exists: bump <Version> in Directory.Build.props to publish a new one."
-            exit 0
-          }
-          gh release create $tag "dist/SpeakForever-Setup-$env:VERSION.exe" --title "Speak Forever $env:VERSION" --generate-notes --target $env:GITHUB_SHA
+      - name: Core tests
+        run: dotnet run --project tests/SpeakForever.Core.Tests -c Release
+      - name: Deterministic routing tests
+        run: dotnet run --project tests/VoiceRouter.Tests -c Release
+      - name: Compile portable app
+        run: dotnet publish app/Gui/SpeakForever.Gui.csproj -c Release --self-contained true --output dist/ForeverRoutedSpeech

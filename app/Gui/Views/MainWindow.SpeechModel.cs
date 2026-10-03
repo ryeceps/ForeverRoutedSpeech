@@ -119,12 +119,12 @@ public sealed partial class MainWindow
         if (downloads.Count > 0)
             ModelNotice.Show("Downloading a voice model", "You can dictate as soon as it finishes. Progress is on the Voice model tab.", "Show progress");
         else if (installed)
-            ModelNotice.Show("Your voice model didn't load", $"{engine!.ModelStatus.TrimEnd('.')}. Try another on the Voice model tab.", "Choose a model");
+            ModelNotice.Show("Your voice model didn't load", $"{engine!.ModelStatus.TrimEnd('.')}. Check the Turbo file on the Voice model tab.", "Set up Turbo");
         else if (engine!.RemovedModel is { } removed)
-            ModelNotice.Show("Your voice model is missing", $"{removed} is no longer on this PC. Download it again, or choose another model, to dictate.", "Choose a model");
+            ModelNotice.Show("Your voice model is missing", $"{removed} is no longer on this PC. Download Turbo again to dictate.", "Set up Turbo");
         else
             ModelNotice.Show("Download a voice model to start",
-                "Speak Forever needs a voice model to understand you. Turbo is recommended: a 574 MB download that uses about 1 GB of memory.", "Choose a model");
+                "ForeverRoutedSpeech needs a voice model to understand you. Turbo is recommended: a 574 MB download that uses about 1 GB of memory.", "Set up Turbo");
     }
 
     void ModelNotice_ActionClick(object sender, RoutedEventArgs e) => ShowTab(SpeechModelTab);
@@ -300,7 +300,7 @@ public sealed partial class MainWindow
                 if (inSetup && text.Length > 0) heardInSetup = text;
                 heard.Text = LastHeardText.Text;
                 meta.Text = LastHeardMeta.Text;
-                Log.Info($"Microphone test: {seconds:F1} s of speech transcribed in {took.TotalMilliseconds:F0} ms: \"{text}\"");
+                Log.Info($"Microphone test: {seconds:F1} s of speech transcribed in {took.TotalMilliseconds:F0} ms.");
             }
             else
             {

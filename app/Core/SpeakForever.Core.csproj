@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Routing\SpeakForever.Routing.csproj" />
     <PackageReference Include="NAudio.WinMM" />
     <PackageReference Include="ppy.SDL3-CS" />
     <PackageReference Include="Whisper.net" />

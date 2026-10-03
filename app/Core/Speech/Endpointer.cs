@@ -79,7 +79,7 @@ public sealed class Endpointer(Config cfg)
         }
 
         int quietMs = (n - 1 - lastLoudFrame) * FrameMs;
-        if (quietMs >= cfg.SilenceMs) EndedBy = $"after a {cfg.SilenceMs / 1000.0:F1} s pause";
+        if (cfg.FinishOnPause && quietMs >= cfg.SilenceMs) EndedBy = $"after a {cfg.SilenceMs / 1000.0:F1} s pause";
         else if (n * FrameMs >= cfg.MaxSeconds * 1000) EndedBy = $"at the {cfg.MaxSeconds} s limit";
         else return null;
         return true;

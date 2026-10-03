@@ -1,0 +1,8 @@
+## Interface: @INTERFACE@
+## Title: Voice Router Compatibility Probe
+## Notes: Context probe and read-only draft preview. Never sends chat.
+## Version: 0.1.0
+## SavedVariables: VoiceRouterProbeDB
+VoiceRouter.lua
+Preview.lua
+Bindings.xml

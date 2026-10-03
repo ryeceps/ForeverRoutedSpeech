@@ -1,0 +1,5 @@
+<Bindings>
+ <Binding name="VOICEROUTER_OPEN" runOnUp="true" category="BINDING_HEADER_VOICEROUTER">
+  VoiceRouter_OpenDraft()
+ </Binding>
+</Bindings>

@@ -70,6 +70,6 @@ public sealed class NameCorrectorTests
     }
 
     [Fact]
-    public void CorrectingRunsBeforeTheChatLengthLimit() =>
-        Assert.Equal("Stratholme", Transcriber.Clean("Stratham", NameCorrector.Shared));
+    public void DictationPreservesNamesInsteadOfRewritingThem() =>
+        Assert.Equal("Stratham", Transcriber.Clean("Stratham", NameCorrector.Shared));
 }

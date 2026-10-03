@@ -6,6 +6,7 @@ using SpeakForever.Input;
 using SpeakForever.Interop;
 using SpeakForever.Logging;
 using SpeakForever.Speech;
+using SpeakForever.Routing;
 
 [assembly: InternalsVisibleTo("SpeakForever.Core.Tests")]
 
@@ -25,6 +26,7 @@ public sealed class Engine : IAsyncDisposable
     readonly RadialMenu radialMenu = new();
     readonly ChatPanel chat = new();
     readonly Session session;
+    readonly DraftRouter router = new(Path.Combine(AppContext.BaseDirectory, "models"));
     readonly SemaphoreSlim configGate = new(1, 1);
     volatile Config config;
     volatile ControllerBindings bindings;
@@ -42,7 +44,11 @@ public sealed class Engine : IAsyncDisposable
         this.config = config;
         bindings = ControllerBindings.From(config);
         session = new Session(() => this.config, () => transcriber, (text, took, seconds) => Transcribed?.Invoke(text, took, seconds),
-            phase => PhaseChanged?.Invoke(phase), leftOut => TooLong?.Invoke(leftOut));
+            phase =>
+            {
+                if (phase == DictationPhase.Listening) LastDraft = null;
+                PhaseChanged?.Invoke(phase);
+            }, leftOut => TooLong?.Invoke(leftOut), PrepareDraft);
         hotkey.Pressed += () =>
         {
             if (IsRunning) session.Start(this.config.KeyboardShortcut ?? "Shortcut");
@@ -60,6 +66,32 @@ public sealed class Engine : IAsyncDisposable
 
     /// <summary>Raised on a background thread when a dictation didn't all fit in WoW's chat box, with the words left out.</summary>
     public event Action<string>? TooLong;
+
+    /// <summary>The latest routed draft, including a blocked draft.</summary>
+    public RoutedDraft? LastDraft { get; private set; }
+    /// <summary>Raised when classification finishes.</summary>
+    public event Action<RoutedDraft>? DraftPrepared;
+    RoutedDraft PrepareDraft(string text)
+    {
+        LastDraft = router.Prepare(text);
+        DraftPrepared?.Invoke(LastDraft);
+        return LastDraft;
+    }
+    /// <summary>Validates and copies an edited draft.</summary>
+    public RoutedDraft CopyEditedDraft(string text) => PublishCopiedDraft(session.CopyEdited(text));
+    RoutedDraft PublishCopiedDraft(RoutedDraft draft)
+    {
+        LastDraft = draft;
+        DraftPrepared?.Invoke(draft);
+        return draft;
+    }
+    /// <summary>Copies only after the player confirms a destination and its verified limit.</summary>
+    public RoutedDraft ConfirmDraft(string text, string prefix, int limit, bool bytes) => PublishCopiedDraft(session.CopyPrepared(() =>
+    {
+        LastDraft = router.Confirm(text, prefix, limit, bytes);
+        DraftPrepared?.Invoke(LastDraft);
+        return LastDraft;
+    }));
 
     /// <summary>The current settings. A snapshot: change them with <see cref="UpdateConfigAsync"/>.</summary>
     public Config Config => config;
@@ -475,6 +507,9 @@ public sealed class Engine : IAsyncDisposable
             case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when session.IsReady:
                 session.Start(b.Dictate.Text);
                 break;
+            case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when router.FocusedFieldAvailable && !probe:
+                session.Start(b.Dictate.Text);
+                break;
             // Often a binding of its own in the game, so these are noted, not complained about.
             case ChatAction.DictateWhileClosed:
                 Log.Info($"{b.Dictate.Text} with chat closed: nothing to dictate into.");
@@ -511,5 +546,6 @@ public sealed class Engine : IAsyncDisposable
         hotkey.Dispose();
         if (Interlocked.Exchange(ref transcriber, null) is { } t) await t.DisposeAsync().ConfigureAwait(false);
         configGate.Dispose();
+        router.Dispose();
     }
 }

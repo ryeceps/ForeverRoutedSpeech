@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using SpeakForever.Configuration;
-using SpeakForever.Logging;
 using Whisper.net;
 using Whisper.net.LibraryLoader;
 using Whisper.net.Logger;
@@ -26,7 +25,6 @@ public sealed partial class Transcriber : IAsyncDisposable
     readonly WhisperFactory factory;
     readonly WhisperProcessor processor;
     readonly SemaphoreSlim gate = new(1, 1);
-    readonly NameCorrector? names;
     bool disposed;
 
     Transcriber(Config cfg, string modelPath)
@@ -52,7 +50,6 @@ public sealed partial class Transcriber : IAsyncDisposable
             .WithNoContext();
         if (!string.IsNullOrWhiteSpace(cfg.Prompt)) builder = builder.WithPrompt(cfg.Prompt);
         processor = (cfg.Language == "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(cfg.Language)).Build();
-        names = cfg.CorrectNames ? NameCorrector.Shared : null; // built here, off the UI thread, not on the first message
     }
 
     /// <summary>
@@ -94,7 +91,7 @@ public sealed partial class Transcriber : IAsyncDisposable
             var text = new StringBuilder();
             await foreach (var segment in processor.ProcessAsync(audio, ct).ConfigureAwait(false))
                 text.Append(segment.Text);
-            return Clean(text.ToString(), names);
+            return Clean(text.ToString());
         }
         finally
         {
@@ -112,24 +109,9 @@ public sealed partial class Transcriber : IAsyncDisposable
 
     internal static string Clean(string raw, NameCorrector? names = null)
     {
-        // Whisper marks non-speech as [BLANK_AUDIO], (music), *laughs* and the like.
-        var text = NonSpeech().Replace(raw, " ");
-        text = Whitespace().Replace(text, " ").Trim();
-        // "|" starts an escape sequence in WoW chat.
-        text = text.Replace('|', '/');
-        if (names is not null)
-        {
-            (text, var changes) = names.Correct(text);
-            foreach (var (heard, name) in changes) Log.Info($"Heard \"{heard}\" as {name}.");
-        }
-        return text;
+        var text = raw.Trim();
+        return text is "[BLANK_AUDIO]" or "(music)" or "[Music]" ? "" : text;
     }
-
-    [GeneratedRegex(@"\[[^\]]*\]|\([^)]*\)|\*[^*]*\*")]
-    private static partial Regex NonSpeech();
-
-    [GeneratedRegex(@"\s+")]
-    private static partial Regex Whitespace();
 
     [GeneratedRegex(@"ggml_vulkan: \d+ = (.+?) \(")]
     private static partial Regex DeviceLine();

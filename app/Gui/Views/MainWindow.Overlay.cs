@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using SpeakForever.Gui.Controls;
 using SpeakForever.Input;
 
@@ -31,14 +32,22 @@ public sealed partial class MainWindow
         }
         else if (phase == DictationPhase.Transcribing) Overlay().Show("Transcribing…", barSpeed: 2.5);
         else if (phase == DictationPhase.Ready)
-            Overlay().Show(ReadyHeadline(tooLong), detail: ReadyDetail(controller, tooLong), glyph: tooLong ? WarningGlyph : PasteGlyph, warning: tooLong);
+            Overlay().Show(engine.LastDraft?.Destination ?? ReadyHeadline(tooLong), detail: ReadyDetail(controller, tooLong), glyph: tooLong ? WarningGlyph : PasteGlyph, warning: tooLong);
+        else if (engine.LastDraft is { Ready: false } blocked)
+            Overlay().Show("Draft needs confirmation", detail: target =>
+            {
+                target.Blocks.Clear();
+                var paragraph = new Paragraph();
+                paragraph.Inlines.Add(new Run { Text = blocked.Message + "\n" + blocked.Reason });
+                target.Blocks.Add(paragraph);
+            }, glyph: WarningGlyph, warning: true);
         else overlay?.Hide();
     }
 
     /// <summary>The words that didn't fit in the chat box, on the Home tab; the overlay says so while the rest waits to be pasted.</summary>
     void ShowTooLong(string leftOut)
     {
-        LastHeardTooLong.Text = $"Too long for WoW's chat box, so only the start was copied. Left out: \"{leftOut}\"";
+        LastHeardTooLong.Text = leftOut;
         LastHeardTooLong.Visibility = Visibility.Visible;
         tooLong = true;
     }
@@ -51,11 +60,17 @@ public sealed partial class MainWindow
         var style = engine!.ButtonStyle;
         var dictate = Chord.Parse(engine.Config.DictateChord);
         var key = engine.Config.KeyboardShortcut ?? "the shortcut";
-        var start = cutShort ? "Only the start fits. " : "";
+        var start = "";
         return target =>
         {
             if (controller) ButtonPrompt.Fill(target, start + "Press Ctrl+V to paste it, or {0} to cancel.", style, dictate);
             else ButtonPrompt.Fill(target, $"{start}Press Ctrl+V to paste it, or {key} to cancel.");
+            if (engine.LastDraft is { } draft)
+            {
+                var paragraph = new Paragraph();
+                paragraph.Inlines.Add(new Run { Text = draft.Message + "\n" + draft.Reason });
+                target.Blocks.Add(paragraph);
+            }
         };
     }
 
@@ -84,7 +99,8 @@ public sealed partial class MainWindow
 
     /// <summary>Sizes the pill for its biggest messages with today's buttons, so every state fits the one pill.</summary>
     void FitOverlay() =>
-        overlay!.FitTo(("Listening", FinishButton(controller: true), null, null),
+        overlay!.FitTo((engine?.LastDraft?.Destination ?? "Draft needs confirmation", null, ReadyDetail(controller: false, cutShort: false), WarningGlyph),
+                       ("Listening", FinishButton(controller: true), null, null),
                        ("Listening", FinishButton(controller: false), null, null),
                        (ReadyHeadline(true), null, ReadyDetail(controller: true, cutShort: true), WarningGlyph),
                        (ReadyHeadline(true), null, ReadyDetail(controller: false, cutShort: true), WarningGlyph));

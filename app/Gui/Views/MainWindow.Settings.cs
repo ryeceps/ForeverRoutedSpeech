@@ -23,7 +23,9 @@ public sealed partial class MainWindow
     /// <summary>The tab's contents, before the window is sized to fit them: the startup card is only for an installed copy.</summary>
     void InitializeSettingsTab()
     {
-        VersionText.Text = $"Speak Forever {UpdateChecker.CurrentVersion.ToString(3)}";
+        VersionText.Text = $"ForeverRoutedSpeech {UpdateChecker.CurrentVersion.ToString(3)}";
+        AutoUpdateSwitch.IsEnabled = CheckUpdatesButton.IsEnabled = false;
+        UpdateStatusText.Text = "Local fork. Upstream updates disabled.";
         updating = true;
         AutoUpdateSwitch.IsOn = engine!.Config.CheckForUpdates;
         OverlaySwitch.IsOn = engine.Config.ShowOverlay;
@@ -139,6 +141,7 @@ public sealed partial class MainWindow
 
     async Task CheckForUpdatesAsync(bool userAsked)
     {
+        if (engine is null || !engine.Config.CheckForUpdates) return;
         if (checkingUpdates) return;
         checkingUpdates = true;
         CheckUpdatesButton.IsEnabled = false;
@@ -148,9 +151,9 @@ public sealed partial class MainWindow
         {
             update = await updateChecker.CheckAsync(stopUpdates.Token);
             UpdateStatusText.Text = update is { } found
-                ? $"Speak Forever {found.Version.ToString(3)} is available."
+                ? $"ForeverRoutedSpeech {found.Version.ToString(3)} is available."
                 : $"You have the latest version. Checked at {DateTime.Now:HH:mm}.";
-            if (update is not null && update != before) Log.Info($"Speak Forever {update.Version.ToString(3)} is available: {update.PageUrl}");
+            if (update is not null && update != before) Log.Info($"ForeverRoutedSpeech {update.Version.ToString(3)} is available: {update.PageUrl}");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !stopUpdates.IsCancellationRequested)
         {
@@ -171,8 +174,8 @@ public sealed partial class MainWindow
         DownloadUpdateButton.Content = install ? "Update now" : "Download";
         DownloadUpdateButton.Visibility = update is null ? Visibility.Collapsed : Visibility.Visible;
         if (update is { } u)
-            UpdateNotice.Show($"Speak Forever {u.Version.ToString(3)} is available",
-                install ? "Speak Forever will download it, close, update and reopen. Your settings and models are kept."
+            UpdateNotice.Show($"ForeverRoutedSpeech {u.Version.ToString(3)} is available",
+                install ? "ForeverRoutedSpeech will download it, close, update and reopen. Your settings and models are kept."
                         : "Download the installer from GitHub and run it to update. Your settings and models are kept.",
                 install ? "Update now" : "Download");
         else
@@ -193,13 +196,13 @@ public sealed partial class MainWindow
         if (installingUpdate) return;
         installingUpdate = true;
         DownloadUpdateButton.IsEnabled = CheckUpdatesButton.IsEnabled = false;
-        var title = $"Updating to Speak Forever {u.Version.ToString(3)}";
+        var title = $"Updating to ForeverRoutedSpeech {u.Version.ToString(3)}";
         UpdateNotice.Show(title, "Downloading…");
         var progress = new Progress<double>(p => UpdateNotice.Text = UpdateStatusText.Text = $"Downloading… {p:P0}");
         try
         {
             var installer = await UpdateChecker.DownloadInstallerAsync(u, progress, stopUpdates.Token);
-            Log.Info($"Installing Speak Forever {u.Version.ToString(3)}. It will reopen when it's done.");
+            Log.Info($"Installing ForeverRoutedSpeech {u.Version.ToString(3)}. It will reopen when it's done.");
             UpdateChecker.StartInstaller(installer);
             Close();
             return;

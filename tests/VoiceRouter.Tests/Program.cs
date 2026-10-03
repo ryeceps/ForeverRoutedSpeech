@@ -1,0 +1,136 @@
+using System.Buffers.Binary;
+using System.Diagnostics;
+using System.Text;
+using VoiceRouter.Core;
+
+int passed = 0;
+void Check(bool condition, string name) { if (!condition) throw new Exception(name); passed++; }
+var prefixes = new Dictionary<Destination,string> { [Destination.Say]="/say", [Destination.Guild]="/g", [Destination.Party]="/p", [Destination.Raid]="/raid", [Destination.Instance]="/i", [Destination.Custom]="numbered" };
+GameContext Context(GroupCategory group = GroupCategory.Solo, bool guild = true) => new(1,"test",1,1,group,guild,
+    [new(4,"Trade - City",Destination.Trade),new(2,"General - Zone",Destination.General),new(9,"Friends",Destination.Custom)],prefixes,255,true);
+var router = new Router(new(true,.95,.9,.2));
+RouteDecision Route(string text, GameContext? c = null, bool fresh = true, Dictionary<Destination,double>? scores = null) => router.Decide(new(text,TranscriptionStatus.Success),c ?? Context(),fresh,scores);
+Check(Route("Hey, what's going on?").Destination == Destination.Say,"solo default");
+Check(Route("Hey, what's going on?",Context(GroupCategory.Party)).Destination == Destination.Party,"party default");
+Check(Route("hi",Context(GroupCategory.Raid)).Destination == Destination.Raid,"raid default");
+Check(Route("hi",Context(GroupCategory.Instance)).Destination == Destination.Instance,"instance default");
+var explicitSay = Route("Tell everyone around me we need help",Context(GroupCategory.Party));
+Check(explicitSay.Destination == Destination.Say && explicitSay.Message == "we need help","explicit audience stripping only");
+Check(Route("Tell guild that we need help").Message == "we need help","instruction connector");
+Check(Route("don't tell guild we need help",Context(GroupCategory.Party)).Destination == Destination.Party,"negated directive");
+Check(Route("I mentioned guild chat",Context(GroupCategory.Party)).Destination == Destination.Party,"reference is not address");
+Check(Route("Tell guild we need help",Context(guild:false)).Reason == RouteReason.ConfirmationRequired,"unavailable guild");
+var trade = Route("Ask in trade selling ore");
+Check(trade.Destination == Destination.Trade && trade.ChannelId == 4,"trade joined id");
+Check(Router.Draft(trade.Message,trade,Context(),true).ClipboardText == "/4 selling ore","numbered prefix");
+Check(Route("Ask in Friends anyone online").Destination == Destination.Custom,"custom explicit");
+Check(Route("Ask in absent chat, hello").Reason == RouteReason.ConfirmationRequired,"unjoined named channel");
+Check(Route("hi",fresh:false).Reason == RouteReason.ConfirmationRequired,"stale routing");
+Check(Route("Tell guild hi",fresh:false).Message == "hi","stale retains stripped message");
+var inferred = Route("selling ore",scores:new(){[Destination.Trade]=.97,[Destination.Say]=.01});
+Check(inferred.Reason == RouteReason.ModelInference,"validated confident public");
+Check(Route("ore",Context(GroupCategory.Party),scores:new(){[Destination.Trade]=.8}).Destination == Destination.Party,"weak public default");
+Check(Route("hi",scores:new(){[Destination.Trade]=.97,[Destination.General]=.9}).Reason == RouteReason.GroupDefault,"margin");
+Check(new Router(new()).Decide(new("selling ore",TranscriptionStatus.Success),Context(),true,new Dictionary<Destination,double>{{Destination.Trade,.99}}).Reason == RouteReason.GroupDefault,"public disabled until validated");
+Check(Route("hi",scores:new(){[Destination.Custom]=1}).Reason == RouteReason.GroupDefault,"custom never inferred");
+Check(Route("guild guys",scores:new(){[Destination.Guild]=.97}).Destination == Destination.Guild,"guild model audience");
+Check(Route("hi",Context(guild:false),scores:new(){[Destination.Guild]=.99}).Destination == Destination.Say,"unavailable inference fallback");
+Check(Route("hi",scores:new(){[Destination.Trade]=double.NaN}).Reason == RouteReason.GroupDefault,"nonfinite score rejected");
+var renumbered = Context() with { Channels = [new(7,"Trade - City",Destination.Trade)] };
+Check(Route("Ask in trade hello",renumbered).ChannelId == 7,"channel renumbering");
+var removed = Context() with { Channels = [] };
+Check(!Router.Draft(trade.Message,trade,removed,true).Valid,"channel disappears before copy");
+var changedGroup = Context(GroupCategory.Solo);
+Check(!Router.Draft("hello",Route("hello",Context(GroupCategory.Party)),changedGroup,true).Valid,"group transition before copy");
+Check(!Router.Draft("hi",Route("hi"),Context(),false).Valid,"stale copy requires confirmation");
+Check(Router.Draft("hi",Route("hi"),null,false,true,"/say",255).Valid,"manual stale confirmation");
+Check(!Router.Draft("hi",Route("hi"),null,false,true,"/run",255).Valid,"invalid prefix blocked");
+Check(!Router.Draft(new string('é',128),Route("hi"),Context(),true).Valid,"UTF8 byte limit");
+Check(Router.Draft(new string('é',127),Route("hi"),Context(),true).Valid,"UTF8 within limit");
+Check(!Router.Draft("a\nb",Route("hi"),Context(),true).Valid,"multiline blocked");
+Check(!Router.Draft("/logout",Route("hi"),Context(),true).Valid,"leading slash blocked");
+Check(!Router.Draft("",Route("hi"),Context(),true).Valid,"empty draft");
+Check(!Router.Draft("hi",Route("hi"),Context() with { MessageLimit=0 },true).Valid,"unknown limit");
+foreach (var status in new[]{TranscriptionStatus.Silence,TranscriptionStatus.Cancelled,TranscriptionStatus.Failure})
+    Check(router.Decide(new("hi",status),Context(),true).Destination is null,"non-success "+status);
+byte[] Frame(string text,uint sequence=1)
+{
+    var payload = Encoding.UTF8.GetBytes(text); var frame = new byte[512]; "WVR1"u8.CopyTo(frame);
+    BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(4),(ushort)payload.Length);
+    BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(6),42); BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(10),sequence);
+    payload.CopyTo(frame,14); BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(14+payload.Length),StatusProtocol.Checksum(frame.AsSpan(0,14+payload.Length))); return frame;
+}
+const string payloadText = "1\t12345\tparty\t1\t255\tbytes\tSay=/say;Party=/p;Custom=numbered\t4,Trade,Trade%20-%20City;9,Custom,Amis%20%C3%A9\tclosed";
+var frame = Frame(payloadText); var decoded = StatusProtocol.Decode(frame);
+foreach(double pitch in new[]{2,2.56,4,6,10.5,16})
+{
+    var rendered=PixelStrip.Decode(pitch,(x,y)=>
+    {
+        int bit=(int)(y/pitch)*StatusProtocol.Columns+(int)(x/pitch);
+        byte value=(byte)(((frame[bit/8]>>(bit%8))&1)*255);
+        return(value,value,value);
+    });
+    Check(rendered.ClientBuild=="12345","synthetic pixel scaling "+pitch);
+}
+bool occlusion=false;try {PixelStrip.Decode(4,(_,_)=>((byte)128,(byte)128,(byte)128));}catch(FormatException){occlusion=true;}
+Check(occlusion,"synthetic occlusion rejected");
+Check(AutoSendGate.BlockReason(true,true,false,Context() with {ChatInput=ChatInputState.Closed},true,new("hi","/say",false,"invalid")) is not null,"invalid draft autosend rejected");
+Check(decoded.Group == GroupCategory.Party && decoded.Channels[1].Name == "Amis é","protocol UTF8 roundtrip");
+void Reject(byte[] bytes,string name) { bool rejected=false; try { StatusProtocol.Decode(bytes); } catch(FormatException) {rejected=true;} Check(rejected,name); }
+var corrupt = (byte[])frame.Clone(); corrupt[24] ^= 1; Reject(corrupt,"checksum corruption");
+Reject(Frame(payloadText.Replace("Say=/say","Say=/run")),"protocol prefix allowlist");
+Reject(Frame(payloadText.Replace("party","unknown")),"invalid group");
+Reject(Frame(payloadText.Replace("9,Custom","4,Custom")),"duplicate channel ids");
+var tracker = new ContextTracker(); tracker.Accept(decoded,TimeSpan.Zero);
+Check(tracker.IsFresh(TimeSpan.FromSeconds(1.99)),"fresh before timeout");
+tracker.Accept(decoded,TimeSpan.FromSeconds(1.9)); Check(!tracker.IsFresh(TimeSpan.FromSeconds(2)),"replayed heartbeat stale");
+tracker.Accept(StatusProtocol.Decode(Frame(payloadText,2)),TimeSpan.FromSeconds(2.1)); Check(tracker.IsFresh(TimeSpan.FromSeconds(2.2)),"advanced heartbeat restores");
+tracker.Invalidate(); Check(!tracker.IsFresh(TimeSpan.FromSeconds(2.2)),"capture failure invalidates");
+Check(Features.Encode("HELLO\nworld",Context(GroupCategory.Party)).StartsWith("hello world ctx_group_party ctx_guild_yes"),"feature normalization");
+var sendDraft=Router.Draft("hi",Route("hi"),Context(),true);
+Check(AutoSendGate.BlockReason(false,true,false,Context(),true,sendDraft) is not null,"autosend off default");
+Check(AutoSendGate.BlockReason(true,false,false,Context(),true,sendDraft) is not null,"edits never autosend");
+Check(AutoSendGate.BlockReason(true,true,true,Context(),true,sendDraft) is not null,"cancelled never autosend");
+Check(AutoSendGate.BlockReason(true,true,false,Context(),false,sendDraft) is not null,"stale never autosend");
+Check(AutoSendGate.BlockReason(true,true,false,Context(),true,sendDraft) is not null,"unknown chat state never autosend");
+Check(AutoSendGate.BlockReason(true,true,false,Context() with {ChatInput=ChatInputState.Open},true,sendDraft) is not null,"open chat never autosend");
+Check(AutoSendGate.BlockReason(true,true,false,Context() with {ChatInput=ChatInputState.Closed},true,sendDraft) is null,"verified closed autosend gate");
+Check(Route("Ask in absent hello",Context(GroupCategory.Party)).Reason==RouteReason.ConfirmationRequired,"unknown explicit no group fallback");
+Check(!Router.Draft("hi",Route("hi"),null,false,true,"/g",255).Valid,"manual prefix audience mismatch");
+if(args.Length==1) {var fromLua=StatusProtocol.Decode(File.ReadAllBytes(args[0]));Check(fromLua.Group==GroupCategory.Party && fromLua.MessageLimit==255 && fromLua.Channels[1].Name=="Friends é","Lua-to-C# wire interoperability");}
+var clicks=new ClickWorkflow();
+Check(clicks.Click()==ClickAction.StartRecording,"first click records");
+long generation=clicks.Generation;
+Check(clicks.Click()==ClickAction.FinishRecording,"second click prepares");
+Check(clicks.Click()==ClickAction.None,"early third click never queues a send");
+clicks.Complete(generation,true,true);
+Check(clicks.Click()==ClickAction.ConfirmDraft,"ready third click confirms");
+Check(clicks.Click()==ClickAction.StartRecording,"next click begins new dictation");
+clicks.Click();generation=clicks.Generation;clicks.Cancel();clicks.Complete(generation,true,true);
+Check(clicks.Phase==ClickPhase.Idle,"cancelled result never revives draft");
+clicks.Click();clicks.Click();clicks.Complete(clicks.Generation,true,false);
+Check(clicks.Click()==ClickAction.None,"invalid draft cannot confirm");
+clicks.Edited(true);Check(clicks.Click()==ClickAction.ConfirmDraft,"editing can make draft ready");
+clicks.RetryConfirmation();Check(clicks.Phase==ClickPhase.Ready,"blocked game confirmation can retry");
+var edge=new ButtonEdge();
+Check(!edge.Observe(true,TimeSpan.Zero),"connecting held button ignored");
+edge.Observe(false,TimeSpan.FromSeconds(1));
+Check(edge.Observe(true,TimeSpan.FromSeconds(2)),"first rising edge without overflow");
+Check(!edge.Observe(true,TimeSpan.FromSeconds(3)),"held button not repeated");
+edge.Observe(false,TimeSpan.FromSeconds(3));Check(edge.Observe(true,TimeSpan.FromSeconds(4)),"next physical click recognized");
+edge.Observe(false,TimeSpan.FromSeconds(4.01));Check(!edge.Observe(true,TimeSpan.FromSeconds(4.02)),"button bounce suppressed");
+edge.Disconnect();Check(!edge.Observe(true,TimeSpan.FromSeconds(5)),"reconnect held ignored");
+var target=new TextTarget("SearchBox",TextFieldKind.AuctionHouse,10,false);
+Check(TextDrafts.Prepare(new("tell guild",TranscriptionStatus.Success),target,true).Text=="tell guild","search preserves routing words");
+Check(!TextDrafts.Prepare(new("hello",TranscriptionStatus.Success),target,false).Valid,"stale field blocked");
+Check(!TextDrafts.Prepare(new("hello",TranscriptionStatus.Success),target with {Kind=TextFieldKind.Unsupported},true).Valid,"unknown focus blocked");
+Check(!TextDrafts.Prepare(new("hello",TranscriptionStatus.Silence),target,true).Valid,"silence field blocked");
+Check(!TextDrafts.Prepare(new("long long long",TranscriptionStatus.Success),target,true).Valid,"search length not truncated");
+Check(TextDrafts.Prepare(new("éé",TranscriptionStatus.Success),target with {Limit=2},true).Valid,"search Unicode characters");
+Check(!TextDrafts.Prepare(new("éé",TranscriptionStatus.Success),target with {Limit=2,LimitIsBytes=true},true).Valid,"search Unicode bytes");
+Check(!TextDrafts.SameTarget(target,target with {Name="OtherBox"}),"changed focus identity blocked");
+string v2=payloadText.Replace("1\t12345","2\t12345")+"\tauctionhouse\tSearchBox\t63\tchars";
+Check(StatusProtocol.Decode(Frame(v2)).FocusedText==target with {Limit=63},"v2 focus protocol decoded");
+Reject(Frame(v2.Replace("auctionhouse","purchase")),"unknown field type rejected");
+var timer = Stopwatch.StartNew(); for(int i=0;i<10000;i++) Route("Hey, what's going on?",Context(GroupCategory.Party)); timer.Stop();
+Console.WriteLine($"PASS: {passed} assertions. Deterministic routing mean: {timer.Elapsed.TotalMilliseconds/10000:F4} ms (no native inference).");

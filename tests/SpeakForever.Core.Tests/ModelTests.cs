@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using SpeakForever.Configuration;
-using SpeakForever.Dictation;
 using SpeakForever.Presentation;
 using SpeakForever.Speech;
 
@@ -53,17 +52,18 @@ public sealed class ModelTests
     }
 
     [Fact]
-    public void InstalledListsModelsSmallestFirstAndDisplayNamesUseTheCatalog()
+    public void InstalledListsOnlyTurboAndDisplayNamesUseTheCatalog()
     {
         Directory.CreateDirectory(AppPaths.Models);
-        var small = Path.Combine(AppPaths.Models, "ggml-base.bin");
+        var small = Path.Combine(AppPaths.Models, "ggml-large-v3-turbo-q5_0.bin");
         var big = Path.Combine(AppPaths.Models, "ggml-mine.bin");
         File.WriteAllBytes(small, new byte[10]);
         File.WriteAllBytes(big, new byte[20]);
         try
         {
-            Assert.Equal([small, big], ModelCatalog.Installed());
-            Assert.Equal("Base", ModelCatalog.DisplayName(small));
+            Assert.Equal([small], ModelCatalog.Installed());
+            Assert.Single(ModelCatalog.All);
+            Assert.Equal("Turbo", ModelCatalog.DisplayName(small));
             Assert.Equal("mine (0.0 GB)", ModelCatalog.DisplayName(big));
         }
         finally
@@ -74,33 +74,9 @@ public sealed class ModelTests
     }
 
     [Theory]
-    [InlineData("Hello [BLANK_AUDIO] there (music) *laughs*", "Hello there")]
-    [InlineData("a | b", "a / b")] // "|" starts an escape sequence in WoW chat
+    [InlineData("Hello [BLANK_AUDIO] there (music) *laughs*", "Hello [BLANK_AUDIO] there (music) *laughs*")]
+    [InlineData("[BLANK_AUDIO]", "")]
+    [InlineData("a | b", "a | b")] // "|" starts an escape sequence in WoW chat
     public void TranscriptsAreCleanedForChat(string raw, string expected) => Assert.Equal(expected, Transcriber.Clean(raw));
 
-    [Fact]
-    public void LongMessagesAreCutAtAWordWithinTheChatLimit()
-    {
-        var (fits, leftOut) = ChatBox.Fit(string.Join(' ', Enumerable.Repeat("word", 100)));
-        Assert.InRange(fits.Length, 250, ChatBox.MaxLength);
-        Assert.EndsWith("word", fits, StringComparison.Ordinal);
-        Assert.Equal(499, fits.Length + 1 + leftOut.Length); // nothing lost but the space between them
-    }
-
-    [Fact]
-    public void AMessageAddedToTheChatBoxOnlyGetsTheRoomLeft()
-    {
-        Assert.Equal((" three four", ""), ChatBox.Fit(" three four", used: 200));
-        Assert.Equal((" three", "four"), ChatBox.Fit(" three four", used: ChatBox.MaxLength - 8));
-        Assert.Equal(("", "three four"), ChatBox.Fit(" three four", used: ChatBox.MaxLength - 4)); // not even a word
-        Assert.Equal(("", "three"), ChatBox.Fit(" three", used: ChatBox.MaxLength));
-    }
-
-    [Fact]
-    public void OnlyAFirstMessageIsCutInsideAWord()
-    {
-        var word = new string('a', 300);
-        Assert.Equal(ChatBox.MaxLength, ChatBox.Fit(word).Fits.Length);
-        Assert.Equal("", ChatBox.Fit(" " + word, used: 10).Fits);
-    }
 }

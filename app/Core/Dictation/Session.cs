@@ -3,6 +3,7 @@ using SpeakForever.Configuration;
 using SpeakForever.Interop;
 using SpeakForever.Logging;
 using SpeakForever.Speech;
+using SpeakForever.Routing;
 
 namespace SpeakForever.Dictation;
 
@@ -19,7 +20,7 @@ namespace SpeakForever.Dictation;
 /// <param name="phase">Listening, then transcribing, then ready to paste, then idle. Raised in order.</param>
 /// <param name="tooLong">The words that didn't fit in the chat box, when some didn't; raised before Ready.</param>
 sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Action<string, TimeSpan, double> transcribed,
-                     Action<DictationPhase> phase, Action<string> tooLong)
+                     Action<DictationPhase> phase, Action<string> tooLong, Func<string, RoutedDraft> route)
 {
     readonly Lock gate = new();
     CancellationTokenSource? active;
@@ -29,6 +30,23 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
 
     /// <summary>Text is on the clipboard, waiting to be pasted.</summary>
     public bool IsReady => ready;
+
+    public RoutedDraft CopyEdited(string text) => CopyPrepared(() => route(text));
+
+    public RoutedDraft CopyPrepared(Func<RoutedDraft> prepare)
+    {
+        lock (gate)
+        {
+            if (active is not null) return new("", null, "Unconfirmed", "Wait for dictation to finish.", 0);
+            var draft = prepare();
+            if (!draft.Ready) return draft;
+            if (Native.CopyText(draft.ClipboardText!, out copied) is { } error)
+                return draft with { ClipboardText = null, Reason = error };
+            ready = true;
+            phase(DictationPhase.Ready);
+            return draft;
+        }
+    }
 
     /// <summary>Starts a dictation, finishes the recording in progress, or cancels text waiting to be pasted.</summary>
     /// <param name="trigger">The button or shortcut, for the log.</param>
@@ -105,6 +123,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     async Task RunAsync(Config cfg, string trigger, CancellationTokenSource cts, CancellationTokenSource finish)
     {
         var ct = cts.Token;
+        float[]? audio = null;
         try
         {
             Cue.Start(cfg);
@@ -112,7 +131,6 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
             await Task.Delay(cfg.DelayMs, ct).ConfigureAwait(false);
             Log.Info($"{trigger}: listening…");
 
-            float[]? audio;
             try
             {
                 audio = await Recorder.RecordUtteranceAsync(cfg, finish.Token, ct).ConfigureAwait(false);
@@ -138,21 +156,21 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
             var text = await transcriber.TranscribeAsync(audio, ct).ConfigureAwait(false);
             var took = Stopwatch.GetElapsedTime(started);
             double seconds = audio.Length / (double)Recorder.SampleRate;
-            Log.Info($"Transcribed {seconds:F1} s of speech in {took.TotalMilliseconds:F0} ms: \"{text}\"");
+            Log.Info($"Transcribed {seconds:F1} s of speech in {took.TotalMilliseconds:F0} ms.");
             transcribed(text, took, seconds);
             if (text.Length == 0) return;
 
-            var (fits, leftOut) = ChatBox.Fit(text);
-            if (leftOut.Length > 0)
-            {
-                Log.Warn($"That's more than WoW's chat box holds ({ChatBox.MaxLength} characters), so only the start was copied. Left out: \"{leftOut}\"");
-                tooLong(leftOut);
-            }
             // Under the lock, so a chat box closing can't slip in between the check and the copy.
             lock (gate)
             {
                 ct.ThrowIfCancellationRequested();
-                if (Native.CopyText(fits, out copied) is { } error)
+                var draft = route(text);
+                if (!draft.Ready)
+                {
+                    tooLong(draft.Reason);
+                    return;
+                }
+                if (Native.CopyText(draft.ClipboardText!, out copied) is { } error)
                 {
                     Log.Warn(error);
                     return;
@@ -177,6 +195,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
                 if (active == cts) active = null;
                 if (!ready) phase(DictationPhase.Idle);
             }
+            if (audio is not null) Array.Clear(audio);
             cts.Dispose();
         }
     }

@@ -32,11 +32,20 @@ public sealed class EndpointerTests
     Outcome Run(Config cfg, params float[][] parts)
     {
         var audio = parts.SelectMany(p => p).Concat(Quiet(10)).ToArray();
-        var e = new Endpointer(cfg);
+        var e = new Endpointer(cfg with { FinishOnPause = true });
         for (int i = 0; i + Frame <= audio.Length; i += Frame)
             if (e.Feed(audio.AsSpan(i, Frame)) is { } done)
                 return new(done, (i + Frame) / (double)Rate, e.EndedBy, e.Levels, e.SpeechStartSample / (double)Rate);
         return new(null, audio.Length / (double)Rate, e.EndedBy, e.Levels, e.SpeechStartSample / (double)Rate);
+    }
+
+    [Fact]
+    public void ClickModeDoesNotStopAtAPause()
+    {
+        var endpointer = new Endpointer(new Config());
+        var audio = Quiet(0.15).Concat(Tone(2, 0.1)).Concat(Quiet(3)).ToArray();
+        for (int i = 0; i + Frame <= audio.Length; i += Frame)
+            Assert.Null(endpointer.Feed(audio.AsSpan(i, Frame)));
     }
 
     [Fact]
@@ -78,7 +87,7 @@ public sealed class EndpointerTests
             parts.Add(Tone(4, 0.1));
             parts.Add(Quiet(0.6));
         }
-        var r = Run(new Config(), [.. parts]);
+        var r = Run(new Config { MaxSeconds = 120 }, [.. parts]);
         Assert.True(r.At > 90, $"ended at {r.At:F1}s by {r.EndedBy}");
     }
 

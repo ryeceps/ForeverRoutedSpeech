@@ -10,7 +10,7 @@ namespace SpeakForever.Gui;
 public partial class App : Application
 {
     /// <summary>Also set on the installer's Start menu shortcut, so a pinned app and its window are one taskbar item.</summary>
-    const string AppUserModelId = "SpeakForever.App";
+    const string AppUserModelId = "ForeverRoutedSpeech.App";
 
     Window? window;
 
@@ -26,7 +26,7 @@ public partial class App : Application
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         AppPaths.MigrateFromOldName();
-        Log.ToFile("speakforever.log");
+        Log.ToFile("foreverroutedspeech.log");
         Engine? engine = null;
         string? configError = null;
         try
