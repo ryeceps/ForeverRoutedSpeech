@@ -14,7 +14,8 @@ addon:SetClampedToScreen(true)
 addon:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local point, _, relativePoint, x, y = self:GetPoint()
-    VoiceRouterStripDB = {point=point, relativePoint=relativePoint, x=x, y=y}
+    VoiceRouterStripDB = VoiceRouterStripDB or {}
+    VoiceRouterStripDB.point, VoiceRouterStripDB.relativePoint, VoiceRouterStripDB.x, VoiceRouterStripDB.y = point, relativePoint, x, y
     print("Voice Router: strip position saved. Update capture.json after moving the strip.")
 end)
 local pixels, lastPixels = {}, {}
@@ -107,8 +108,8 @@ local function focusedField(db)
     if verified and db.build == select(1, build()) then return verified.kind or "auctionhouse", name, verified.limit, verified.units end
     return "unsupported", name, 0, "chars"
 end
-local function activeAudience(db, joined)
-    if not db or not db.chatInputVerified then return "none", "" end
+local function activeAudience(joined, chatInput)
+    if chatInput ~= "open" then return "none", "" end
     local active = safe(chatApi())
     if not active then return "none", "" end
     local kind = safe(active.GetAttribute, active, "chatType")
@@ -150,12 +151,16 @@ local function emit()
     local limit = db and db.build == number and db.limit or 0
     local units = db and db.units or "bytes"
     local chatInput = "unknown"
-    if db and db.build == number and db.chatInputVerified and chatApi() then
+    if chatApi() and type(GetCurrentKeyBoardFocus) == "function" then
+        local ok, active = pcall(chatApi())
+        local focusOK, focus = pcall(GetCurrentKeyBoardFocus)
+        if ok and focusOK then chatInput = active and active == focus and "open" or "closed" end
+    elseif db and db.build == number and db.chatInputVerified and chatApi() then
         local ok, active = pcall(chatApi())
         if ok then chatInput = active and "open" or "closed" end
     end
     local fieldKind, fieldName, fieldLimit, fieldUnits = focusedField(db)
-    local audience, channelId = activeAudience(db and db.build == number and db or nil, joined)
+    local audience, channelId = activeAudience(joined, chatInput)
     local payload = table.concat({"3", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId}, "\t")
     if #payload > 494 then label:SetText("Voice Router: context exceeds strip capacity"); return end
     seq = (seq + 1) % 4294967296
@@ -219,6 +224,10 @@ SlashCmdList.VOICEROUTER = function(text)
     elseif command == "reset" then
         db.destinations, db.limit, db.rendered, db.chatInputVerified, db.textFields = {}, 0, false, false, {}
         print("All compatibility confirmations reset.")
+    elseif command == "preview" then
+        VoiceRouterStripDB = VoiceRouterStripDB or {}
+        VoiceRouterStripDB.previewEnabled = arg == "on"
+        print("Voice Router: large preview " .. (VoiceRouterStripDB.previewEnabled and "enabled" or "hidden") .. ".")
     elseif command == "hide" then addon:Hide()
     elseif command == "show" then addon:Show()
     else

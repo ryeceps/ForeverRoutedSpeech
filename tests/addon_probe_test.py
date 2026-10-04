@@ -101,4 +101,14 @@ lua.execute("search.GetAttribute=function(self,key) return 'WHISPER' end; handle
 fields,_=decode(frame());assert fields[13]=='unsupported'
 lua.execute("otherSearch={GetName=function() return 'InventorySearch' end}; GetCurrentKeyBoardFocus=function() return otherSearch end; handlers.OnUpdate(nil,.25); SlashCmdList.VOICEROUTER('field chars 40'); handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[9]=='search' and fields[10]=='InventorySearch'
+lua.execute("VoiceRouterProbeDB.chatInputVerified=nil; GetCurrentKeyBoardFocus=function() return search end; search.GetAttribute=function() return 'SAY' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[8]=='open' and fields[13]=='Say', 'matching live keyboard and chat focus does not need manual flag'
+lua.execute("GetCurrentKeyBoardFocus=function() return nil end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[8]=='closed' and fields[13]=='none', 'unfocused active chat never enables paste'
+lua.execute("GetCurrentKeyBoardFocus=function() error('focus failure') end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[8]=='unknown', 'focus API failure blocks paste'
+lua.execute("SlashCmdList.VOICEROUTER('preview on')")
+assert lua.globals().VoiceRouterStripDB.previewEnabled
+lua.execute("SlashCmdList.VOICEROUTER('preview off')")
+assert not lua.globals().VoiceRouterStripDB.previewEnabled
 print("PASS: Lua 5.1 framing, checksum, capability gates, modern/legacy chat focus, heartbeat, renumbering, UTF-8 and API failures. Actual Forever client untested.")

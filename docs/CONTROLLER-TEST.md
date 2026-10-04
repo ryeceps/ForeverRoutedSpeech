@@ -14,3 +14,5 @@ Runtime testing remains blocked on the development PC by Windows Smart App Contr
 - Back/cancel, closing chat and controller disconnect cancel readiness. Keyboard dictation keeps manual Ctrl+V and cancel-ready behavior.
 
 The companion previews the draft before paste. The addon observes the native field after paste; it does not read the clipboard or synthesize game keys. Verify the Forever compatibility probe and actual chat/Auction House fields before live use. Policy approval remains unverified; see POLICY.md.
+
+The optional large addon preview is hidden by default (`/wvr preview on|off`). Chat focus can be established automatically when the keyboard-focus object matches the active chat edit box; API failures or unfocused chat block paste. Temporary unverified-Say mode requires the focused audience to be Say at paste time. Opening Say after recording is allowed; switching to a different audience is blocked.

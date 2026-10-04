@@ -167,5 +167,9 @@ Check(!Router.StandaloneDraft(new("hello\nthere",TranscriptionStatus.Success)).V
 Check(!Router.StandaloneDraft(new("hello",TranscriptionStatus.Silence)).Valid,"standalone silence blocked");
 Check(!Router.StandaloneDraft(new(new string('a',4097),TranscriptionStatus.Success)).Valid,"standalone oversize requires editing");
 Check(Router.StandaloneDraft(new("Hello 世界",TranscriptionStatus.Success)).ClipboardText=="/say Hello 世界","standalone Unicode preserved");
+var sayPreviewContext=Context() with {ChatInput=ChatInputState.Closed,ActiveDestination=Destination.Say,MessageLimit=0,VerifiedPrefixes=new Dictionary<Destination,string>()};
+Check(PasteContext.Validate(sayPreviewContext,sayPreviewContext with {ChatInput=ChatInputState.Open,Heartbeat=2},true) is null,"temporary Say draft permits opening Say after recording");
+Check(PasteContext.Validate(sayPreviewContext,sayPreviewContext with {ChatInput=ChatInputState.Open,ActiveDestination=Destination.Guild},true) is not null,"temporary Say draft refuses different audience");
+Check(PasteContext.Validate(sayPreviewContext,sayPreviewContext with {ChatInput=ChatInputState.Unknown},true) is not null,"temporary Say draft still requires chat focus evidence");
 var timer = Stopwatch.StartNew(); for(int i=0;i<10000;i++) Route("Hey, what's going on?",Context(GroupCategory.Party)); timer.Stop();
 Console.WriteLine($"PASS: {passed} assertions. Deterministic routing mean: {timer.Elapsed.TotalMilliseconds/10000:F4} ms (no native inference).");

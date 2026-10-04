@@ -51,6 +51,7 @@ local function clear()
     panel:Hide()
 end
 local function refresh()
+    if not VoiceRouterStripDB or not VoiceRouterStripDB.previewEnabled then clear(); return end
     local edit, kind = target()
     if not edit then clear(); return end
     local text = call(edit.GetText, edit)

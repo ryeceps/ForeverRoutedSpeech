@@ -98,10 +98,11 @@ public sealed class DraftRouter : IDisposable
             {
                 if(allowUnverifiedSayDrafts())
                 {
-                    copiedContext=null;
+                    // The opt-in draft pins Say; a later paste must find focused Say chat in this same session.
+                    copiedContext=context with {ActiveDestination=Destination.Say,ActiveChannelId=null,ActivePanelUnsupported=false};
                     var preview=Router.StandaloneDraft(new(text,TranscriptionStatus.Success));
                     return new(preview.Message,preview.ClipboardText,preview.Valid ? "Say (setup skipped)" : "Unconfirmed",
-                        preview.Valid ? "Chat compatibility setup skipped. Say draft copied; paste manually. Actual game length limit is unverified." : preview.Explanation,
+                        preview.Valid ? "Chat compatibility setup skipped. Say draft copied. Open Say chat, then click the stick to paste. Actual game length limit is unverified." : preview.Explanation,
                         timing.Elapsed.TotalMilliseconds);
                 }
                 string setup=context.VerifiedPrefixes.Count==0

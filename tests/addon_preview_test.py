@@ -35,6 +35,8 @@ lua.execute((root / 'addon/VoiceRouter/Preview.lua').read_text(encoding='utf-8')
 lua.execute("frames[2].OnUpdate(nil,.25)")
 assert not lua.globals().frames[1].visible
 lua.execute("VoiceRouter_OpenDraft()")
+assert not lua.globals().frames[1].visible, 'large preview hidden by default'
+lua.execute("VoiceRouterStripDB={previewEnabled=true}; VoiceRouter_OpenDraft()")
 assert lua.globals().opens == 1
 assert lua.globals().frames[1].visible
 lua.execute("active.text='/p Hello é'; frames[2].OnUpdate(nil,.25)")
