@@ -7,6 +7,22 @@ using SpeakForever.Routing;
 using SpeakForever.Speech;
 using VoiceRouter.Core;
 
+if(args.Length==1 && args[0] is "--context-probe" or "--calibrate-context")
+{
+    try
+    {
+        var settings=VoiceRouter.App.Settings.Load();
+        if(args[0]=="--calibrate-context") settings=VoiceRouter.App.WindowsCapture.Calibrate(settings);
+        var first=VoiceRouter.App.WindowsCapture.Read(settings);
+        Thread.Sleep(350);
+        var second=VoiceRouter.App.WindowsCapture.Read(settings);
+        Console.WriteLine($"Capture: ({settings.StripX},{settings.StripY}), pitch {settings.CellPixels}; build {second.ClientBuild}; heartbeat {first.Heartbeat} -> {second.Heartbeat}.");
+        Console.WriteLine($"Prefixes: {string.Join(", ",second.VerifiedPrefixes.Select(p=>$"{p.Key}={p.Value}"))}; message limit: {second.MessageLimit}; chat input: {second.ChatInput}.");
+        if(first.Session==second.Session && first.Heartbeat==second.Heartbeat) throw new IOException("Heartbeat is not advancing.");
+    }
+    catch(Exception error) {Console.Error.WriteLine("Context probe failed: "+error.Message); Environment.ExitCode=1;}
+    return;
+}
 string package=Path.GetFullPath(args[0]);
 NativeLibrary.SetDllImportResolver(typeof(DraftRouter).Assembly,(name,assembly,path)=>
     name=="voice_router_native" ? NativeLibrary.Load(Path.Combine(package,"voice_router_native.dll")) : 0);
@@ -46,6 +62,9 @@ using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? th
     Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Stale chat context uses standalone Say");
     var times=new List<double>();
     for(uint i=6;i<106;i++) {context=context with {Heartbeat=i};router.RefreshContext();times.Add(router.Prepare("Hello friends").RoutingMilliseconds);}
+    context=context with {Heartbeat=106,VerifiedPrefixes=new Dictionary<Destination,string>(),MessageLimit=0};router.RefreshContext();
+    var setup=router.Prepare("Hello friends");
+    Check(!setup.Ready && setup.Destination=="Setup required" && setup.Reason.Contains("/wvr rendered"),"Detected unconfigured addon gives setup instructions");
     Console.WriteLine($"Routing checks: {checks}; mean {times.Average():F3} ms; max {times.Max():F3} ms (capture excluded).");
 }
 Check(ModelCatalog.All.Count==1 && ModelCatalog.All[0].Name=="Turbo","Only Turbo offered");

@@ -20,7 +20,7 @@ public static class WindowsCapture
     private static string Title(nint window)
     {var title=new System.Text.StringBuilder(512);GetWindowText(window,title,title.Capacity);return title.ToString();}
     public static bool IsGameForeground(Settings settings)=>Title(GetForegroundWindow()).Equals(settings.WindowTitle,StringComparison.OrdinalIgnoreCase);
-    public static GameContext Read(Settings settings)
+    private static nint FindGameWindow(Settings settings)
     {
         nint window=GetForegroundWindow();
         if(!Title(window).Equals(settings.WindowTitle,StringComparison.OrdinalIgnoreCase))
@@ -32,6 +32,58 @@ public static class WindowsCapture
         }
         // An unobscured background strip is usable for editing; autosend separately requires foreground.
         if(window==0 || IsIconic(window) || !IsWindowVisible(window)) throw new IOException("Game is minimized or hidden.");
+        return window;
+    }
+    /// <summary>One-time setup only: find a unique checksummed strip inside the game client.</summary>
+    public static Settings Calibrate(Settings settings)
+    {
+        nint window=FindGameWindow(settings);
+        if(!GetClientRect(window,out var bounds)) throw new IOException("Cannot read game client bounds.");
+        var origin=new Point();
+        if(!ClientToScreen(window,ref origin)) throw new IOException("Cannot locate game window.");
+        using var bitmap=new Bitmap(bounds.Right,bounds.Bottom,System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+        using(var graphics=Graphics.FromImage(bitmap)) graphics.CopyFromScreen(origin.X,origin.Y,0,0,bitmap.Size,CopyPixelOperation.SourceCopy);
+        var area=bitmap.LockBits(new Rectangle(0,0,bitmap.Width,bitmap.Height),System.Drawing.Imaging.ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+        byte[] rgb=new byte[area.Stride*area.Height];
+        try {Marshal.Copy(area.Scan0,rgb,0,rgb.Length);} finally {bitmap.UnlockBits(area);}
+        int stride=area.Stride;
+        (byte R,byte G,byte B) Pixel(int x,int y) {int i=y*stride+x*3;return(rgb[i+2],rgb[i+1],rgb[i]);}
+        byte[] magic="WVR1"u8.ToArray();
+        var matches=new List<(Settings Settings,GameContext Context)>();
+        foreach(int pitch in new[]{1,2,3,4})
+        for(int y=0;y<=bitmap.Height-StatusProtocol.Rows*pitch;y++)
+        for(int x=0;x<=bitmap.Width-StatusProtocol.Columns*pitch;x++)
+        {
+            bool match=true;
+            for(int bit=0;bit<32;bit++)
+            {
+                var c=Pixel(x+(int)((bit+.5)*pitch),y+(int)(.5*pitch));
+                bool white=((magic[bit/8]>>(bit%8))&1)!=0;
+                if(Math.Abs(c.R-c.G)>20 || Math.Abs(c.G-c.B)>20 || (white ? c.R<190 : c.R>65)) {match=false;break;}
+            }
+            if(!match) continue;
+            try
+            {
+                var context=PixelStrip.Decode(pitch,(dx,dy)=>Pixel(x+dx,y+dy));
+                matches.Add((settings with {StripX=x,StripY=y,CellPixels=pitch},context));
+            }
+            catch(FormatException) { }
+        }
+        // Larger cells can produce several adjacent sampling alignments. Group those as one strip.
+        var distinct=new List<(Settings Settings,GameContext Context)>();
+        foreach(var candidate in matches)
+            if(!distinct.Any(m=>m.Context.Session==candidate.Context.Session && Math.Abs(m.Settings.StripX-candidate.Settings.StripX)<candidate.Settings.CellPixels && Math.Abs(m.Settings.StripY-candidate.Settings.StripY)<candidate.Settings.CellPixels)) distinct.Add(candidate);
+        if(distinct.Count!=1) throw new IOException($"Found {distinct.Count} status strips. Keep one strip visible and unobscured, then retry calibration.");
+        var found=distinct[0];
+        Thread.Sleep(350);
+        var next=Read(found.Settings);
+        if(next.Session!=found.Context.Session || next.Heartbeat==found.Context.Heartbeat) throw new IOException("Strip heartbeat is not advancing. Calibration was not saved.");
+        found.Settings.Save();
+        return found.Settings;
+    }
+    public static GameContext Read(Settings settings)
+    {
+        nint window=FindGameWindow(settings);
         if(!GetClientRect(window,out var bounds)) throw new IOException("Cannot read game client bounds.");
         if(settings.CellPixels < 1 || settings.CellPixels > 16 || !double.IsFinite(settings.CellPixels)) throw new IOException("Calibrate cell pitch between 1 and 16 physical pixels.");
         int width = (int)Math.Ceiling(StatusProtocol.Columns*settings.CellPixels), height = (int)Math.Ceiling(StatusProtocol.Rows*settings.CellPixels);
@@ -40,6 +92,7 @@ public static class WindowsCapture
         if(!ClientToScreen(window,ref origin)) throw new IOException("Cannot locate game window.");
         using var bitmap = new Bitmap(width,height,System.Drawing.Imaging.PixelFormat.Format24bppRgb);
         using(var graphics=Graphics.FromImage(bitmap)) graphics.CopyFromScreen(origin.X,origin.Y,0,0,bitmap.Size,CopyPixelOperation.SourceCopy);
-        return PixelStrip.Decode(settings.CellPixels,(x,y)=>{var color=bitmap.GetPixel(x,y);return(color.R,color.G,color.B);});
+        try {return PixelStrip.Decode(settings.CellPixels,(x,y)=>{var color=bitmap.GetPixel(x,y);return(color.R,color.G,color.B);});}
+        catch(FormatException e) {throw new FormatException($"{e.Message} Capture ({settings.StripX},{settings.StripY}), pitch {settings.CellPixels}; game client {bounds.Right} x {bounds.Bottom}.",e);}
     }
 }

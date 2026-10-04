@@ -89,7 +89,7 @@ public sealed partial class MainWindow : Window
         {
             tooLong = !draft.Ready;
             LastHeardText.Text = draft.Message;
-            LastHeardMeta.Text = $" · {draft.Destination} · routing {draft.RoutingMilliseconds:F2} ms";
+            LastHeardMeta.Text = $" Â· {draft.Destination} Â· routing {draft.RoutingMilliseconds:F2} ms";
             LastHeardTooLong.Text = draft.Reason;
             LastHeardTooLong.Visibility = Visibility.Visible;
             ManualRoutePanel.Visibility = draft.Ready ? Visibility.Collapsed : Visibility.Visible;
@@ -260,6 +260,23 @@ public sealed partial class MainWindow : Window
         LastHeardTooLong.Text = draft.Reason;
         LastHeardTooLong.Visibility = Visibility.Visible;
 
+    }
+
+    async void CalibrateContext_Click(object sender, RoutedEventArgs e)
+    {
+        CalibrateContextButton.IsEnabled = false;
+        CalibrationResult.Visibility = Visibility.Visible;
+        CalibrationResult.Text = "Finding the visible game status stripâ€¦";
+        try
+        {
+            var settings = await Task.Run(() => VoiceRouter.App.WindowsCapture.Calibrate(VoiceRouter.App.Settings.Load()));
+            CalibrationResult.Text = $"Status strip found at ({settings.StripX}, {settings.StripY}). Capture settings saved.";
+        }
+        catch (Exception error)
+        {
+            CalibrationResult.Text = "Could not calibrate: " + error.Message;
+        }
+        finally { CalibrateContextButton.IsEnabled = true; }
     }
 
     void ConfirmRoute_Click(object sender, RoutedEventArgs e)

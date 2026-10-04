@@ -92,6 +92,14 @@ public sealed class DraftRouter : IDisposable
                 return new(standalone.Message,standalone.ClipboardText,standalone.Valid ? "Say (standalone)" : "Unconfirmed",
                     standalone.Explanation,timing.Elapsed.TotalMilliseconds);
             }
+            if(context!.VerifiedPrefixes.Count==0 || context.MessageLimit<=0)
+            {
+                string setup=context.VerifiedPrefixes.Count==0
+                    ? "Addon detected. Finish the in-game setup: /wvr rendered, then /wvr verify say after testing Say."
+                    : "Addon detected; chat prefixes are confirmed.";
+                if(context.MessageLimit<=0) setup+=" Record the tested chat limit with /wvr limit bytes <limit>.";
+                return new(text,null,"Setup required",setup+" Clipboard retained.",timing.Elapsed.TotalMilliseconds);
+            }
             var scores=new Dictionary<Destination,double>();
             if(handle!=0 && fresh)
             {

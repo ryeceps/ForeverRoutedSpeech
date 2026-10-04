@@ -209,6 +209,9 @@
                         <RichTextBlock x:Name="LastHeardHint" FontSize="14" Foreground="{StaticResource BodyBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="False" />
                         <TextBox x:Name="LastHeardText" FontSize="16" Foreground="{StaticResource BrightBrush}"
                                    TextWrapping="Wrap" AcceptsReturn="False" Visibility="Collapsed" />
+                        <Button x:Name="CalibrateContextButton" Content="Find game status strip" Click="CalibrateContext_Click" HorizontalAlignment="Left"
+                                ToolTipService.ToolTip="Keep the game and its small status strip visible. Finds its position without changing game input." />
+                        <TextBlock x:Name="CalibrationResult" Style="{StaticResource Caption}" TextWrapping="Wrap" Visibility="Collapsed" />
                         <Expander x:Name="ManualRoutePanel" Header="Confirm destination" Visibility="Collapsed">
                             <StackPanel Spacing="6">
                                 <TextBox x:Name="ManualPrefix" Header="Chat destination" PlaceholderText="Verified command, such as /g or /2" />
