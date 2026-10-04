@@ -56,9 +56,9 @@ public sealed class DraftRouter : IDisposable
     }
     public void RefreshContext() => Poll();
     public bool ClassifierLoaded => handle != 0;
-    public bool StandaloneAvailable
+    public bool ChatDraftRecordingAvailable
     {
-        get {lock(gate) return !tracker.IsFresh(clock.Elapsed) && tracker.Current?.FocusedText is null;}
+        get {lock(gate) return tracker.Current?.FocusedText is null;}
     }
     public bool FocusedFieldAvailable
     {

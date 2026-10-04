@@ -33,6 +33,7 @@ bool missing=false; int checks=0;
 void Check(bool condition,string name) {if(!condition) throw new Exception(name); checks++;}
 using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context,()=>false))
 {
+    Check(router.ChatDraftRecordingAvailable,"Fresh chat context permits recording before opening chat");
     Check(router.ClassifierLoaded,"Real fastText model loaded without another Whisper instance");
     Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Say default while grouped");
     Check(router.Prepare("Tell everyone around me we need help").ClipboardText=="/say we need help","Explicit local audience");
@@ -47,9 +48,11 @@ using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? th
     Check(!router.Prepare(" ").Ready,"Silence cannot copy");
     Check(router.Prepare("Hello 世界").ClipboardText=="/say Hello 世界","Unicode preserved");
     context=context with {Heartbeat=4,FocusedText=new("Auction House search",TextFieldKind.AuctionHouse,63,false)};router.RefreshContext();
+    Check(!router.ChatDraftRecordingAvailable && router.FocusedFieldAvailable,"Verified search uses focused-field recording path");
     Check(router.Prepare("Runecloth").ClipboardText=="Runecloth","AH plain text, no chat prefix");
     Check(!router.Prepare(new string('a',64)).Ready,"AH limit");
     missing=true;router.RefreshContext();
+    Check(!router.ChatDraftRecordingAvailable,"Stale search context cannot become chat recording");
     Check(!router.Prepare("Hello friends").Ready,"Missing context cannot copy");
     Check(router.Confirm("Hello friends","/say",255,true).ClipboardText=="/say Hello friends","Manual confirmed route");
     Check(!router.Confirm("Hello friends","/logout",255,true).Ready,"Manual invalid command rejected");
