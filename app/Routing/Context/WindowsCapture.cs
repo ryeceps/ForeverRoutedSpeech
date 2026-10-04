@@ -33,7 +33,7 @@ public static class WindowsCapture
         // An unobscured background strip is usable for editing; autosend separately requires foreground.
         if(window==0 || IsIconic(window) || !IsWindowVisible(window)) throw new IOException("Game is minimized or hidden.");
         if(!GetClientRect(window,out var bounds)) throw new IOException("Cannot read game client bounds.");
-        if(settings.CellPixels < 2 || settings.CellPixels > 16 || !double.IsFinite(settings.CellPixels)) throw new IOException("Calibrate cell pitch between 2 and 16 physical pixels.");
+        if(settings.CellPixels < 1 || settings.CellPixels > 16 || !double.IsFinite(settings.CellPixels)) throw new IOException("Calibrate cell pitch between 1 and 16 physical pixels.");
         int width = (int)Math.Ceiling(StatusProtocol.Columns*settings.CellPixels), height = (int)Math.Ceiling(StatusProtocol.Rows*settings.CellPixels);
         if(settings.StripX < 0 || settings.StripY < 0 || settings.StripX+width > bounds.Right || settings.StripY+height > bounds.Bottom) throw new IOException("Status strip lies outside the game client.");
         var origin = new Point { X=settings.StripX,Y=settings.StripY };

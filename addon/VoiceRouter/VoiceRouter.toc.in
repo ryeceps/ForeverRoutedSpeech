@@ -2,7 +2,7 @@
 ## Title: Voice Router Compatibility Probe
 ## Notes: Context probe and read-only draft preview. Never sends chat.
 ## Version: 0.1.0
-## SavedVariables: VoiceRouterProbeDB
+## SavedVariables: VoiceRouterProbeDB, VoiceRouterStripDB
 VoiceRouter.lua
 Preview.lua
 Bindings.xml

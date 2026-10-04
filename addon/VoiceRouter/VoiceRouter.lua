@@ -1,6 +1,8 @@
 -- No SendChatMessage, input simulation, or live SavedVariables transport.
 local addon = CreateFrame("Frame", "VoiceRouterStatusStrip", UIParent)
-local columns, rows, cell = 128, 32, 4
+local columns, rows, cell = 128, 32, 1
+-- Keep cells at one physical pixel even when the game UI is scaled.
+if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
 addon:SetSize(columns * cell, rows * cell)
 addon:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -64)
 addon:SetFrameStrata("TOOLTIP")
@@ -8,8 +10,14 @@ addon:EnableMouse(true)
 addon:SetMovable(true)
 addon:RegisterForDrag("LeftButton")
 addon:SetScript("OnDragStart", function(self) self:StartMoving() end)
-addon:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-local pixels = {}
+addon:SetClampedToScreen(true)
+addon:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = self:GetPoint()
+    VoiceRouterStripDB = {point=point, relativePoint=relativePoint, x=x, y=y}
+    print("Voice Router: strip position saved. Update capture.json after moving the strip.")
+end)
+local pixels, lastPixels = {}, {}
 for y = 0, rows - 1 do
     for x = 0, columns - 1 do
         local t = addon:CreateTexture(nil, "OVERLAY")
@@ -17,11 +25,15 @@ for y = 0, rows - 1 do
         t:SetPoint("TOPLEFT", addon, "TOPLEFT", x * cell, -y * cell)
         t:SetColorTexture(0, 0, 0, 1)
         pixels[#pixels + 1] = t
+        lastPixels[#pixels] = 0
     end
 end
 local label = addon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 label:SetPoint("BOTTOMLEFT", addon, "TOPLEFT", 0, 2)
-label:SetText("Voice Router probe: /wvr report | drag strip to move")
+label:SetText("Voice Router | drag to move")
+label:Hide()
+addon:SetScript("OnEnter", function() label:Show() end)
+addon:SetScript("OnLeave", function() label:Hide() end)
 local session = math.floor((GetTime() * 1000 + math.random(1, 1000000)) % 4294967296)
 local seq, elapsed = 0, 0
 local function safe(fn, ...)
@@ -152,7 +164,10 @@ local function emit()
     for i, pixel in ipairs(pixels) do
         local value = string.byte(data, math.floor((i-1) / 8) + 1) or 0
         local white = math.floor(value / (2 ^ ((i-1) % 8))) % 2
-        pixel:SetColorTexture(white, white, white, 1)
+        if lastPixels[i] ~= white then
+            pixel:SetColorTexture(white, white, white, 1)
+            lastPixels[i] = white
+        end
     end
     label:SetText("Voice Router: " .. number .. " | " .. group .. " | /wvr report")
 end
@@ -163,6 +178,13 @@ end)
 addon:RegisterEvent("ADDON_LOADED")
 addon:SetScript("OnEvent", function(_, _, name)
     if name ~= "VoiceRouter" then return end
+    if VoiceRouterStripDB then
+        local p = VoiceRouterStripDB
+        if type(p.point) == "string" and type(p.relativePoint) == "string" and type(p.x) == "number" and type(p.y) == "number" then
+            addon:ClearAllPoints()
+            addon:SetPoint(p.point, UIParent, p.relativePoint, p.x, p.y)
+        end
+    end
     local number = build()
     if not VoiceRouterProbeDB or VoiceRouterProbeDB.build ~= number then
         VoiceRouterProbeDB = {build=number, destinations={}, limit=0, units="bytes", rendered=false}

@@ -62,7 +62,7 @@ byte[] Frame(string text,uint sequence=1)
 }
 const string payloadText = "1\t12345\tparty\t1\t255\tbytes\tSay=/say;Party=/p;Custom=numbered\t4,Trade,Trade%20-%20City;9,Custom,Amis%20%C3%A9\tclosed";
 var frame = Frame(payloadText); var decoded = StatusProtocol.Decode(frame);
-foreach(double pitch in new[]{2,2.56,4,6,10.5,16})
+foreach(double pitch in new[]{1,2,2.56,4,6,10.5,16})
 {
     var rendered=PixelStrip.Decode(pitch,(x,y)=>
     {

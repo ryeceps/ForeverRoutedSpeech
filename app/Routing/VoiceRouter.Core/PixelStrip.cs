@@ -3,7 +3,7 @@ public static class PixelStrip
 {
     public static GameContext Decode(double pitch,Func<int,int,(byte R,byte G,byte B)> pixel)
     {
-        if(!double.IsFinite(pitch) || pitch<2 || pitch>16) throw new FormatException("Invalid cell pitch.");
+        if(!double.IsFinite(pitch) || pitch<1 || pitch>16) throw new FormatException("Invalid cell pitch.");
         var bytes=new byte[StatusProtocol.Capacity];
         for(int bit=0;bit<StatusProtocol.Columns*StatusProtocol.Rows;bit++)
         {

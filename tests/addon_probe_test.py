@@ -10,20 +10,24 @@ from lupa.lua51 import LuaRuntime
 root=Path(__file__).resolve().parents[1]
 lua=LuaRuntime(unpack_returned_tuples=True)
 lua.execute('''
-pixels = {}; handlers = {}; SlashCmdList = {}; UIParent = {}; LE_PARTY_CATEGORY_INSTANCE = 2
+drawCalls=0; pixels = {}; handlers = {}; SlashCmdList = {}; UIParent = {GetEffectiveScale=function() return .75 end}; LE_PARTY_CATEGORY_INSTANCE = 2
 function CreateFrame()
- local f = {}
- function f:SetSize(...) end; function f:SetPoint(...) end; function f:SetFrameStrata(...) end
+ local f = {}; strip=f
+ function f:SetScale(scale) self.scale=scale end
+ function f:SetSize(w,h) self.width=w; self.height=h end
+ function f:SetPoint(...) self.point={...} end; function f:SetFrameStrata(...) end
+ function f:SetClampedToScreen(...) end; function f:ClearAllPoints() end
+ function f:GetPoint() return 'TOPLEFT', UIParent, 'TOPLEFT', 50, -80 end
  function f:EnableMouse(...) end; function f:SetMovable(...) end; function f:RegisterForDrag(...) end
  function f:StartMoving() end; function f:StopMovingOrSizing() end; function f:RegisterEvent(...) end
  function f:Hide() end; function f:Show() end
  function f:SetScript(name, fn) handlers[name] = fn end
  function f:CreateTexture()
   local t = {}; function t:SetSize(...) end; function t:SetPoint(...) end
-  function t:SetColorTexture(r,g,b,a) self.r = r end
+  function t:SetColorTexture(r,g,b,a) self.r = r; drawCalls=drawCalls+1 end
   pixels[#pixels+1] = t; return t
  end
- function f:CreateFontString() return {SetPoint=function() end,SetText=function() end} end
+ function f:CreateFontString() return {SetPoint=function() end,SetText=function() end,Hide=function() end,Show=function() end} end
  return f
 end
 function GetTime() return 123 end
@@ -37,6 +41,9 @@ function print(...) end
 ''')
 lua.execute((root/"addon/VoiceRouter/VoiceRouter.lua").read_text(encoding="utf-8"))
 lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter'); handlers.OnUpdate(nil,.25)")
+assert lua.globals().strip.width==128 and lua.globals().strip.height==32, 'compact strip dimensions'
+assert abs(lua.globals().strip.scale*.75-1)<1e-9, 'physical pixel scale compensation'
+
 def frame():
     values=[int(lua.globals().pixels[i].r) for i in range(1,4097)]
     return bytes(sum(values[n*8+k]<<k for k in range(8)) for n in range(512))
@@ -45,6 +52,13 @@ def decode(data):
     length,session,sequence=struct.unpack_from("<HII",data,4)
     assert zlib.adler32(data[:14+length])==struct.unpack_from("<I",data,14+length)[0]
     return data[14:14+length].decode("utf-8").split("\t"),sequence
+before=lua.globals().drawCalls
+lua.execute("handlers.OnUpdate(nil,.25)")
+assert 0 < lua.globals().drawCalls-before < 128, 'only changed heartbeat/checksum pixels redraw'
+lua.execute("handlers.OnDragStop({StopMovingOrSizing=function() end,GetPoint=function() return 'TOPLEFT',UIParent,'TOPLEFT',50,-80 end})")
+assert lua.globals().VoiceRouterStripDB.x==50 and lua.globals().VoiceRouterStripDB.y==-80, 'drag persists position'
+lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter')")
+assert lua.globals().strip.point[4]==50 and lua.globals().strip.point[5]==-80, 'saved position restored on load'
 fields,sequence=decode(frame());assert fields[6]=="" and fields[4]=="0", "unverified disabled"
 lua.execute("SlashCmdList.VOICEROUTER('rendered'); SlashCmdList.VOICEROUTER('verify say'); SlashCmdList.VOICEROUTER('verify party'); SlashCmdList.VOICEROUTER('verify custom'); SlashCmdList.VOICEROUTER('limit bytes 255'); handlers.OnUpdate(nil,.25)")
 data=frame();fields,advanced=decode(data)
