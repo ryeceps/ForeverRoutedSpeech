@@ -8,6 +8,7 @@ public sealed record Settings
     public int StripX { get; set; } = 16;
     public int StripY { get; set; } = 64;
     public double CellPixels { get; set; } = 1;
+    public bool AllowUnverifiedSayDrafts { get; set; }
     public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ForeverRoutedSpeech");
     public static string FilePath => Path.Combine(Folder,"capture.json");
     public static Settings Load()

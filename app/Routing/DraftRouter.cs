@@ -32,9 +32,11 @@ public sealed class DraftRouter : IDisposable
     private bool disposed;
     private GameContext? copiedContext;
     private readonly Func<GameContext> readContext;
-    public DraftRouter(string folder, Func<GameContext>? contextReader = null)
+    private readonly Func<bool> allowUnverifiedSayDrafts;
+    public DraftRouter(string folder, Func<GameContext>? contextReader = null, Func<bool>? allowUnverifiedSayDrafts = null)
     {
         readContext = contextReader ?? (() => WindowsCapture.Read(Settings.Load()));
+        this.allowUnverifiedSayDrafts = allowUnverifiedSayDrafts ?? (() => Settings.Load().AllowUnverifiedSayDrafts);
         try
         {
             using var policy=JsonDocument.Parse(File.ReadAllText(Path.Combine(folder,"router-policy.json")));
@@ -94,6 +96,14 @@ public sealed class DraftRouter : IDisposable
             }
             if(context!.VerifiedPrefixes.Count==0 || context.MessageLimit<=0)
             {
+                if(allowUnverifiedSayDrafts())
+                {
+                    copiedContext=null;
+                    var preview=Router.StandaloneDraft(new(text,TranscriptionStatus.Success));
+                    return new(preview.Message,preview.ClipboardText,preview.Valid ? "Say (setup skipped)" : "Unconfirmed",
+                        preview.Valid ? "Chat compatibility setup skipped. Say draft copied; paste manually. Actual game length limit is unverified." : preview.Explanation,
+                        timing.Elapsed.TotalMilliseconds);
+                }
                 string setup=context.VerifiedPrefixes.Count==0
                     ? "Addon detected. Finish the in-game setup: /wvr rendered, then /wvr verify say after testing Say."
                     : "Addon detected; chat prefixes are confirmed.";

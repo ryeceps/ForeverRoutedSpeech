@@ -31,7 +31,7 @@ var prefixes=new Dictionary<Destination,string>{{Destination.Say,"/say"},{Destin
 GameContext context=new(2,"test-client",1,1,GroupCategory.Party,true,[new(5,"Trade",Destination.Trade)],prefixes,255,true);
 bool missing=false; int checks=0;
 void Check(bool condition,string name) {if(!condition) throw new Exception(name); checks++;}
-using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context))
+using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context,()=>false))
 {
     Check(router.ClassifierLoaded,"Real fastText model loaded without another Whisper instance");
     Check(router.Prepare("Hello friends").ClipboardText=="/say Hello friends","Say default while grouped");
@@ -66,6 +66,13 @@ using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? th
     var setup=router.Prepare("Hello friends");
     Check(!setup.Ready && setup.Destination=="Setup required" && setup.Reason.Contains("/wvr rendered"),"Detected unconfigured addon gives setup instructions");
     Console.WriteLine($"Routing checks: {checks}; mean {times.Average():F3} ms; max {times.Max():F3} ms (capture excluded).");
+}
+using(var previewRouter=new DraftRouter(Path.Combine(package,"models"),()=>context,()=>true))
+{
+    Check(previewRouter.Prepare("Hello friends").ClipboardText=="/say Hello friends","Unverified setup opt-in copies Say preview");
+    Check(!previewRouter.Prepare("Tell guild hello").Ready,"Setup skip does not redirect explicit unavailable audience");
+    Check(!previewRouter.Prepare("/logout").Ready,"Setup skip blocks leading slash");
+    Check(!previewRouter.Prepare(" ").Ready,"Setup skip preserves clipboard on silence");
 }
 Check(ModelCatalog.All.Count==1 && ModelCatalog.All[0].Name=="Turbo","Only Turbo offered");
 Check(!new Config().CheckForUpdates && new Config().MaxSeconds==30 && !new Config().FinishOnPause,"Fork defaults");
