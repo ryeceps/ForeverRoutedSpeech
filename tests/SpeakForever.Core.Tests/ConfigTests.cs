@@ -33,6 +33,9 @@ public sealed class ConfigTests
         Write($$"""{ "Prompt": "{{Old}}" }""");
         Assert.Equal(Config.DefaultPrompt, (await Load()).Prompt);
 
+        Write(System.Text.Json.JsonSerializer.Serialize(new { Prompt = Config.PreviousDefaultPrompt }));
+        Assert.Equal(Config.DefaultPrompt, (await Load()).Prompt);
+
         Write("""{ "Prompt": "Our guild is Wrathbringers." }""");
         Assert.Equal("Our guild is Wrathbringers.", (await Load()).Prompt);
     }

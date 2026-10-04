@@ -1,35 +1,590 @@
 {
- "description":"Small authored bootstrap corpus. Family splits are fixed; this is not a production accuracy claim.",
- "families":[
-  {"id":"greeting","split":"train","label":"default","texts":["Hey what's going on?","Hello everyone","How are you doing?","Hi guys"]},
-  {"id":"guild_reference","split":"train","label":"default","texts":["I saw a guild yesterday","The guild bank is near here","My guild taught me this","That guild has a nice tabard"]},
-  {"id":"item_reference","split":"train","label":"default","texts":["This sword looks great","I found some ore","My auction expired yesterday","I bought a potion earlier"]},
-  {"id":"negated_sale","split":"train","label":"default","texts":["I am not selling this sword","Don't buy any potions yet","We aren't looking for a group","No need to sell anything"]},
-  {"id":"group_chat","split":"train","label":"default","texts":["Wait for me","Let's go left","I need mana","Can you heal me?","We need help here"]},
-  {"id":"guild_address","split":"train","label":"guild","texts":["How's the guild doing guys?","Guildmates are we raiding tonight?","Anyone in our guild online?","Hello guild friends"]},
-  {"id":"guild_activity","split":"train","label":"guild","texts":["Guildies who wants to join our guild event?","Guildmates let's plan the guild meeting","Hello guildies how was the guild raid?","Guildies can anyone help with the guild bank?","Guildmates please check our event calendar","Guild folks please welcome our new member","Guild friends our roster needs more healers","Guildies can someone invite my friend?","Guildmates please update our raid signup","Hey guild folks we have a guild announcement"]},
-  {"id":"selling","split":"train","label":"trade","texts":["Selling copper ore who wants to buy?","WTS potions cheap message me","Selling bags five gold each","Looking for buyers for my crafted sword"]},
-  {"id":"buying","split":"train","label":"trade","texts":["WTB healing potions paying gold","Looking to buy copper ore","Buying bags for gold anyone selling?","Want to purchase a crafted shield"]},
-  {"id":"trade_service","split":"train","label":"trade","texts":["Enchanter selling enchants tips welcome","Offering crafting services for gold","Selling portal service one gold"]},
-  {"id":"zone_question","split":"train","label":"general","texts":["Where in this zone is the quest trainer?","Anyone in this zone seen the rare spawn?","Which road leads to the town in this zone?","Zone folks where is the flight master?"]},
-  {"id":"recruit_group","split":"train","label":"lookingforgroup","texts":["LFM dungeon group need healer and tank","Looking for a dungeon group as a healer","LFG tank available for dungeon","Recruiting a healer for our dungeon party"]},
-  {"id":"stt_noise","split":"train","label":"default","texts":["gold guild good morning","buy bye everyone","trade blade looks cool","sell spell was great"]},
-  {"id":"guild_report","split":"validation","label":"default","texts":["Someone from a guild helped us","Their guild name made me laugh","Guild chat was busy yesterday"]},
-  {"id":"casual_items","split":"validation","label":"default","texts":["That axe dropped from the boss","I have copper in my backpack","I love the trade district"]},
-  {"id":"sale_negation_validation","split":"validation","label":"default","texts":["This bag is not for sale","I'm keeping my ore not selling it","I don't want to buy that"]},
-  {"id":"guild_salutation","split":"validation","label":"guild","texts":["Good evening guildmates how is everyone?","Guild folks what are we doing tonight?","Guildies how are things going?"]},
-  {"id":"sale_offer_validation","split":"validation","label":"trade","texts":["WTS wool cloth two gold per stack","Selling crafted armor any buyers?","Buy my potions for three gold"]},
-  {"id":"purchase_validation","split":"validation","label":"trade","texts":["WTB leather stacks for gold","Buying a new wand any sellers?","Need to purchase bags paying well"]},
-  {"id":"directions_validation","split":"validation","label":"general","texts":["People in this zone where is the inn?","Anyone around the zone know where the trainer is?","Zone residents where does this quest start?"]},
-  {"id":"dungeon_validation","split":"validation","label":"lookingforgroup","texts":["LFM one healer for dungeon run","LFG mage wants a dungeon party","Need a dungeon tank for our group"]},
-  {"id":"party_banter_test","split":"test","label":"default","texts":["Nice job on that pull","Hold on my mana is low","What's everyone up to?","See you later"]},
-  {"id":"guild_story_test","split":"test","label":"default","texts":["I used to be in that guild","The guild leader gave me this","A guild invited me yesterday"]},
-  {"id":"not_commerce_test","split":"test","label":"default","texts":["I won't sell my new sword","Nobody needs to buy this","Selling isn't what I'm doing","The trade channel is noisy"]},
-  {"id":"stt_test","split":"test","label":"default","texts":["good guild morning friends","that copper coupler is pretty","bye buy see you tomorrow"]},
-  {"id":"guild_checkin_test","split":"test","label":"guild","texts":["Hey guildies how did your evening go?","Guildmates anyone ready for our event?","Morning guild folks how are you all?"]},
-  {"id":"listing_test","split":"test","label":"trade","texts":["WTS iron bars ten gold a stack","Selling cloth bags looking for buyers","Offering cheap healing potions for sale"]},
-  {"id":"shopping_test","split":"test","label":"trade","texts":["WTB silver ore paying two gold","Looking to purchase a shield for gold","Buying linen cloth who has some for sale?"]},
-  {"id":"local_help_test","split":"test","label":"general","texts":["Anyone in the zone know where the blacksmith is?","Zone folks where can I find the quest giver?","Where is the local trainer in this zone?"]},
-  {"id":"recruitment_test","split":"test","label":"lookingforgroup","texts":["LFM tank for dungeon tonight","LFG priest healer for a dungeon run","Dungeon group needs one more healer"]}
- ]
+  "description": "Authored bootstrap with WoW shorthand, spoken abbreviations, combat/loot conversation, commerce, recruitment, direct guild address, negations and transcription ambiguity. Family splits fixed; no real-player accuracy claim.",
+  "families": [
+    {
+      "id": "greeting",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "Hey what's going on?",
+        "Hello everyone",
+        "How are you doing?",
+        "Hi guys"
+      ]
+    },
+    {
+      "id": "guild_reference",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "I saw a guild yesterday",
+        "The guild bank is near here",
+        "My guild taught me this",
+        "That guild has a nice tabard"
+      ]
+    },
+    {
+      "id": "item_reference",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "This sword looks great",
+        "I found some ore",
+        "My auction expired yesterday",
+        "I bought a potion earlier"
+      ]
+    },
+    {
+      "id": "negated_sale",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "I am not selling this sword",
+        "Don't buy any potions yet",
+        "We aren't looking for a group",
+        "No need to sell anything"
+      ]
+    },
+    {
+      "id": "group_chat",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "Wait for me",
+        "Let's go left",
+        "I need mana",
+        "Can you heal me?",
+        "We need help here"
+      ]
+    },
+    {
+      "id": "guild_address",
+      "split": "train",
+      "label": "guild",
+      "texts": [
+        "How's the guild doing guys?",
+        "Guildmates are we raiding tonight?",
+        "Anyone in our guild online?",
+        "Hello guild friends"
+      ]
+    },
+    {
+      "id": "guild_activity",
+      "split": "train",
+      "label": "guild",
+      "texts": [
+        "Guildies who wants to join our guild event?",
+        "Guildmates let's plan the guild meeting",
+        "Hello guildies how was the guild raid?",
+        "Guildies can anyone help with the guild bank?",
+        "Guildmates please check our event calendar",
+        "Guild folks please welcome our new member",
+        "Guild friends our roster needs more healers",
+        "Guildies can someone invite my friend?",
+        "Guildmates please update our raid signup",
+        "Hey guild folks we have a guild announcement"
+      ]
+    },
+    {
+      "id": "selling",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "Selling copper ore who wants to buy?",
+        "WTS potions cheap message me",
+        "Selling bags five gold each",
+        "Looking for buyers for my crafted sword"
+      ]
+    },
+    {
+      "id": "buying",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "WTB healing potions paying gold",
+        "Looking to buy copper ore",
+        "Buying bags for gold anyone selling?",
+        "Want to purchase a crafted shield"
+      ]
+    },
+    {
+      "id": "trade_service",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "Enchanter selling enchants tips welcome",
+        "Offering crafting services for gold",
+        "Selling portal service one gold"
+      ]
+    },
+    {
+      "id": "zone_question",
+      "split": "train",
+      "label": "general",
+      "texts": [
+        "Where in this zone is the quest trainer?",
+        "Anyone in this zone seen the rare spawn?",
+        "Which road leads to the town in this zone?",
+        "Zone folks where is the flight master?"
+      ]
+    },
+    {
+      "id": "recruit_group",
+      "split": "train",
+      "label": "lookingforgroup",
+      "texts": [
+        "LFM dungeon group need healer and tank",
+        "Looking for a dungeon group as a healer",
+        "LFG tank available for dungeon",
+        "Recruiting a healer for our dungeon party"
+      ]
+    },
+    {
+      "id": "stt_noise",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "gold guild good morning",
+        "buy bye everyone",
+        "trade blade looks cool",
+        "sell spell was great"
+      ]
+    },
+    {
+      "id": "guild_report",
+      "split": "validation",
+      "label": "default",
+      "texts": [
+        "Someone from a guild helped us",
+        "Their guild name made me laugh",
+        "Guild chat was busy yesterday"
+      ]
+    },
+    {
+      "id": "casual_items",
+      "split": "validation",
+      "label": "default",
+      "texts": [
+        "That axe dropped from the boss",
+        "I have copper in my backpack",
+        "I love the trade district"
+      ]
+    },
+    {
+      "id": "sale_negation_validation",
+      "split": "validation",
+      "label": "default",
+      "texts": [
+        "This bag is not for sale",
+        "I'm keeping my ore not selling it",
+        "I don't want to buy that"
+      ]
+    },
+    {
+      "id": "guild_salutation",
+      "split": "validation",
+      "label": "guild",
+      "texts": [
+        "Good evening guildmates how is everyone?",
+        "Guild folks what are we doing tonight?",
+        "Guildies how are things going?"
+      ]
+    },
+    {
+      "id": "sale_offer_validation",
+      "split": "validation",
+      "label": "trade",
+      "texts": [
+        "WTS wool cloth two gold per stack",
+        "Selling crafted armor any buyers?",
+        "Buy my potions for three gold"
+      ]
+    },
+    {
+      "id": "purchase_validation",
+      "split": "validation",
+      "label": "trade",
+      "texts": [
+        "WTB leather stacks for gold",
+        "Buying a new wand any sellers?",
+        "Need to purchase bags paying well"
+      ]
+    },
+    {
+      "id": "directions_validation",
+      "split": "validation",
+      "label": "general",
+      "texts": [
+        "People in this zone where is the inn?",
+        "Anyone around the zone know where the trainer is?",
+        "Zone residents where does this quest start?"
+      ]
+    },
+    {
+      "id": "dungeon_validation",
+      "split": "validation",
+      "label": "lookingforgroup",
+      "texts": [
+        "LFM one healer for dungeon run",
+        "LFG mage wants a dungeon party",
+        "Need a dungeon tank for our group"
+      ]
+    },
+    {
+      "id": "party_banter_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "Nice job on that pull",
+        "Hold on my mana is low",
+        "What's everyone up to?",
+        "See you later"
+      ]
+    },
+    {
+      "id": "guild_story_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "I used to be in that guild",
+        "The guild leader gave me this",
+        "A guild invited me yesterday"
+      ]
+    },
+    {
+      "id": "not_commerce_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "I won't sell my new sword",
+        "Nobody needs to buy this",
+        "Selling isn't what I'm doing",
+        "The trade channel is noisy"
+      ]
+    },
+    {
+      "id": "stt_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "good guild morning friends",
+        "that copper coupler is pretty",
+        "bye buy see you tomorrow"
+      ]
+    },
+    {
+      "id": "guild_checkin_test",
+      "split": "test",
+      "label": "guild",
+      "texts": [
+        "Hey guildies how did your evening go?",
+        "Guildmates anyone ready for our event?",
+        "Morning guild folks how are you all?"
+      ]
+    },
+    {
+      "id": "listing_test",
+      "split": "test",
+      "label": "trade",
+      "texts": [
+        "WTS iron bars ten gold a stack",
+        "Selling cloth bags looking for buyers",
+        "Offering cheap healing potions for sale"
+      ]
+    },
+    {
+      "id": "shopping_test",
+      "split": "test",
+      "label": "trade",
+      "texts": [
+        "WTB silver ore paying two gold",
+        "Looking to purchase a shield for gold",
+        "Buying linen cloth who has some for sale?"
+      ]
+    },
+    {
+      "id": "local_help_test",
+      "split": "test",
+      "label": "general",
+      "texts": [
+        "Anyone in the zone know where the blacksmith is?",
+        "Zone folks where can I find the quest giver?",
+        "Where is the local trainer in this zone?"
+      ]
+    },
+    {
+      "id": "recruitment_test",
+      "split": "test",
+      "label": "lookingforgroup",
+      "texts": [
+        "LFM tank for dungeon tonight",
+        "LFG priest healer for a dungeon run",
+        "Dungeon group needs one more healer"
+      ]
+    },
+    {
+      "id": "wow_combat_callouts",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "OOM after that pull, wait for mana",
+        "Tank has aggro, do not pull another pack",
+        "Need a rez at the entrance",
+        "Good DPS on that boss, nice interrupt"
+      ]
+    },
+    {
+      "id": "wow_party_shorthand",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "BRB grabbing water, do not start yet",
+        "CC the moon and sheep the caster",
+        "LOS the ranged mobs around this corner",
+        "We wiped, release and run back"
+      ]
+    },
+    {
+      "id": "wow_loot_discussion",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "That BoE dropped, should I equip it?",
+        "I need linen cloth for my own first aid",
+        "My copper ore is in the bank",
+        "The auction house search cannot find this enchant"
+      ]
+    },
+    {
+      "id": "wow_offer_acronyms",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "WTS heavy leather, five gold a stack, any buyers?",
+        "W T S runecloth bags, eight gold each",
+        "Want to sell my BoE wand for gold",
+        "WTS blacksmithing crafts, your mats and a tip"
+      ]
+    },
+    {
+      "id": "wow_purchase_acronyms",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "WTB stacks of wool cloth, paying two gold",
+        "W T B healing potions, who is selling?",
+        "Want to buy a crafted chest piece, paying gold",
+        "WTB copper bars, cash on delivery"
+      ]
+    },
+    {
+      "id": "wow_dungeon_recruitment",
+      "split": "train",
+      "label": "lookingforgroup",
+      "texts": [
+        "LFM for Deadmines, need tank and heals",
+        "L F G rogue seeking a dungeon party",
+        "Looking for more DPS for Shadowfang Keep",
+        "LF2M for a dungeon, one tank and one healer"
+      ]
+    },
+    {
+      "id": "wow_service_advertisements",
+      "split": "train",
+      "label": "trade",
+      "texts": [
+        "Mage selling portals, tips welcome",
+        "Leatherworker offering armor kits for sale",
+        "Enchanter available for paid enchants, bring mats",
+        "WTS alchemy potions, taking orders"
+      ]
+    },
+    {
+      "id": "wow_guild_direct_requests",
+      "split": "train",
+      "label": "guild",
+      "texts": [
+        "Guildies, sign up for our raid tonight",
+        "Hey guildmates, can someone invite my alt?",
+        "Guild folks, who can help organize our bank tabs?",
+        "Good morning guildies, anyone up for a guild dungeon?"
+      ]
+    },
+    {
+      "id": "wow_guild_incidental",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "Our guild run went badly yesterday",
+        "I met a guild officer in Stormwind",
+        "That guildie gave me a nice pair of boots",
+        "My guild uses different raid callouts"
+      ]
+    },
+    {
+      "id": "wow_commerce_denials",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "I said WTS yesterday but I am not selling now",
+        "Do not post a WTB, we have enough herbs",
+        "This BoE is for our healer, not for sale",
+        "No paid carry, just helping a friend"
+      ]
+    },
+    {
+      "id": "wow_zone_requests",
+      "split": "train",
+      "label": "general",
+      "texts": [
+        "Anyone else in this zone having trouble finding the quest item?",
+        "Zone folks, which camp has the leatherworking trainer?",
+        "People questing here, has the rare spawned today?",
+        "Anyone in the zone know when this escort returns?"
+      ]
+    },
+    {
+      "id": "wow_speech_noise",
+      "split": "train",
+      "label": "default",
+      "texts": [
+        "We need heals, not heels, before the next pull",
+        "I said sell spell, not selling anything",
+        "Looking for my group members on the map",
+        "The LFG channel is busy, but we already have a party"
+      ]
+    },
+    {
+      "id": "wow_spoken_offer_validation",
+      "split": "validation",
+      "label": "trade",
+      "texts": [
+        "Double you tee ess: selling a crafted dagger for nine gold",
+        "Fresh elixirs available to purchase, three gold per bottle",
+        "WTS spare enchanting materials at a discount",
+        "Selling my silk stacks, send offers if you want to buy"
+      ]
+    },
+    {
+      "id": "wow_spoken_recruit_validation",
+      "split": "validation",
+      "label": "lookingforgroup",
+      "texts": [
+        "El eff gee, priest healer looking to join a dungeon",
+        "LF1M tank to finish our Gnomeregan team",
+        "Assembling a Razorfen party, recruiting DPS",
+        "Seeking a dungeon group for my warrior tank"
+      ]
+    },
+    {
+      "id": "wow_public_zone_validation",
+      "split": "validation",
+      "label": "general",
+      "texts": [
+        "Others questing in this zone, where is the turn-in NPC?",
+        "Hey zone adventurers, is anyone seeing the same spawn bug?",
+        "Zone residents, which vendor repairs armor around here?",
+        "Anyone traveling in this zone know the route to the harbor?"
+      ]
+    },
+    {
+      "id": "wow_roster_address_validation",
+      "split": "validation",
+      "label": "guild",
+      "texts": [
+        "Guildies, please put your availability on the roster",
+        "Our guild members online, could you check the event notice?",
+        "Hey guild friends, welcome the new recruits",
+        "Guildmates, can we schedule a crafting evening?"
+      ]
+    },
+    {
+      "id": "wow_private_tactics_validation",
+      "split": "validation",
+      "label": "default",
+      "texts": [
+        "Pat incoming, wait behind the wall",
+        "Focus the skull, I will sap the other mob",
+        "I can rez after combat ends",
+        "Hold your cooldowns until the tank is ready"
+      ]
+    },
+    {
+      "id": "wow_trade_words_validation",
+      "split": "validation",
+      "label": "default",
+      "texts": [
+        "Can you trade me the quest item here?",
+        "I am not buying a portal, I can walk",
+        "Someone typed LFM, but our group is full already",
+        "Guild bank items are not being sold"
+      ]
+    },
+    {
+      "id": "wow_crafting_order_test",
+      "split": "test",
+      "label": "trade",
+      "texts": [
+        "WTS tailoring commissions, bring cloth and pay a fee",
+        "Taking paid orders for crafted boots, buyers wanted",
+        "Offering sharpening stones for sale in bulk",
+        "WTB an enchanter service, paying for the enchant"
+      ]
+    },
+    {
+      "id": "wow_dungeon_availability_test",
+      "split": "test",
+      "label": "lookingforgroup",
+      "texts": [
+        "DPS searching for a Blackfathom Deeps run to join",
+        "Recruiting the last healer for a dungeon expedition",
+        "LF3M damage dealers to start our instance run",
+        "LFG as a tank, ready for a dungeon tonight"
+      ]
+    },
+    {
+      "id": "wow_zone_collective_test",
+      "split": "test",
+      "label": "general",
+      "texts": [
+        "Fellow questers in this zone, does anyone know this patrol timer?",
+        "People exploring this zone, where can a low level repair?",
+        "Anyone playing in this zone know how to reach the cave?",
+        "Zone travelers, is the quest giver missing for you too?"
+      ]
+    },
+    {
+      "id": "wow_guild_audience_test",
+      "split": "test",
+      "label": "guild",
+      "texts": [
+        "Guildies, could our officers approve the new applications?",
+        "Hey guild members, who would like a promotion celebration?",
+        "Guildmates, thanks for helping with our guild event",
+        "Guild folks, please review the new raid schedule"
+      ]
+    },
+    {
+      "id": "wow_incidental_activities_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "I queued for LFG earlier, now I am questing",
+        "That guild run had a lot of wipes",
+        "Do you remember where I put my BoP shield?",
+        "The trade window closed before I accepted"
+      ]
+    },
+    {
+      "id": "wow_transcription_ambiguity_test",
+      "split": "test",
+      "label": "default",
+      "texts": [
+        "Buy, bye, I am heading out for the night",
+        "My heels are sore after all that running",
+        "I want to sell nothing, I am keeping this loot",
+        "We need more people to click the quest object, not a dungeon group"
+      ]
+    }
+  ]
 }

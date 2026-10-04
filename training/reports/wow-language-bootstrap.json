@@ -1,0 +1,48 @@
+{
+  "data": "Authored bootstrap; scores are uncalibrated",
+  "split_sizes": {
+    "train": 424,
+    "validation": 192,
+    "test": 212
+  },
+  "public_candidate_threshold": 0.8,
+  "margin": 0.1,
+  "validation_public": {
+    "emitted": 28,
+    "correct": 28,
+    "precision": 1.0,
+    "recall": 0.509090909090909,
+    "independent_families": 7
+  },
+  "heldout_public": {
+    "emitted": 28,
+    "correct": 28,
+    "precision": 1.0,
+    "recall": 0.509090909090909,
+    "independent_families": 7
+  },
+  "heldout_guild": {
+    "emitted": 8,
+    "correct": 7,
+    "precision": 0.875,
+    "recall": 0.3333333333333333,
+    "independent_families": 3
+  },
+  "public_enabled": false,
+  "gate": "95% precision; 100 emitted routes and 30 independent paraphrase families in each validation and test split",
+  "model_sha256": "7f646852f984e19edb97856d6b55b7ed4c59f0e570a93097267ae5299b451899",
+  "corpus_sha256": "f39833e1d2e5cab038306452c89aea51549a49e0a8ed39b13382a72cd2eb3fec",
+  "deployment": "Rejected for live deployment: candidate guild precision regressed to 7/8 on expanded held-out examples. Existing router.bin retained.",
+  "existing_model_comparison_on_expanded_test": {
+    "guild_emitted": 5,
+    "guild_correct": 5,
+    "guild_precision": 1.0,
+    "guild_independent_families": 1,
+    "public_candidate_emitted": 17,
+    "public_candidate_correct": 17,
+    "public_candidate_precision": 1.0,
+    "public_candidate_independent_families": 5,
+    "public_candidate_threshold": 0.8,
+    "note": "Public inference disabled in the shipped policy; this comparison is not an activation gate."
+  }
+}

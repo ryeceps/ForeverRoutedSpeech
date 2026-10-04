@@ -52,14 +52,21 @@ public sealed record Config
     public string Language { get; init; } = "en";
 
     /// <summary>
-    /// Words Whisper should expect. Game names are its weak spot: without this it hears
-    /// "Iron Fudge" and "Dead Minds". Only names it would otherwise get wrong are worth their
-    /// place: Whisper reads just the last 224 tokens (this default is 211) and silently drops
-    /// the start of anything longer, so the most important names come last.
+    /// Short WoW vocabulary and chat examples supplied as Whisper's initial prompt.
+    /// A recognition hint, not a guarantee or a transcript replacement rule.
     /// </summary>
     public string Prompt { get; init; } = DefaultPrompt;
 
     internal const string DefaultPrompt =
+        "World of Warcraft chat. Looking for group (LFG), looking for more (LFM), LF1M, LF2M, " +
+        "want to sell (WTS), want to buy (WTB). Tank, healer, DPS, OOM, rez, aggro, pull, wipe, " +
+        "loot, BoE, BoP, CC, LOS, guildies, guildmates, mats, enchants, portals, gold per stack. " +
+        "Copper ore, linen cloth, wool cloth, runecloth, healing potions, mana potions. " +
+        "Ironforge, Stormwind, Orgrimmar, Darnassus, Shadowglen, Teldrassil, Westfall, " +
+        "Deadmines, Shadowfang Keep, Blackfathom Deeps, Gnomeregan, Razorfen, Uldaman, " +
+        "Zul'Farrak, Maraudon, Stratholme, Scholomance, Molten Core, Onyxia.";
+
+    internal const string PreviousDefaultPrompt =
         "World of Warcraft: Forever chat. LFG, LFM, WTS, DPS, OOM, AoE, rez. " +
         "Innervate, Soulstone, Arcane Intellect, Rage of the Farseer, Maelstrom Weapon, Templar's Bulwark, " +
         "Litany of Light, Frostfire Bolt, Mutilate. " +
@@ -81,6 +88,7 @@ public sealed record Config
     /// <summary>Earlier versions' default prompts: still unchanged in a settings file, they move to the current one.</summary>
     static readonly string[] OldDefaultPrompts =
     [
+        PreviousDefaultPrompt,
         "World of Warcraft chat. Ironforge, Stormwind, Orgrimmar, Undercity, Darnassus, Thunder Bluff, " +
         "Deadmines, Westfall, Elwynn Forest, Stranglethorn, Molten Core, Onyxia, Blackrock, Hyjal, Skyborne.",
     ];
