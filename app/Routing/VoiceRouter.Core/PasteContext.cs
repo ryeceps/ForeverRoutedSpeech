@@ -2,6 +2,22 @@ namespace VoiceRouter.Core;
 
 public static class PasteContext
 {
+    public static string? ValidateOpenPaste(GameContext? original, GameContext? context, bool fresh, bool allowClosed, bool opening)
+    {
+        if (context is null || original is null) return Validate(original, context, fresh);
+        if (context.FocusedText is null && context.ChatInput == ChatInputState.Unknown)
+            return "Chat focus is unknown. Open chat manually before pasting.";
+        var expected = original;
+        var check = context;
+        if (opening && context.FocusedText is null && !context.ActivePanelUnsupported &&
+            original.VerifiedPrefixes.Count > 0 && original.MessageLimit > 0)
+            expected = original with { ActiveDestination = context.ActiveDestination, ActiveChannelId = context.ActiveChannelId };
+        if (allowClosed && context.FocusedText is null && context.ChatInput == ChatInputState.Closed)
+            check = context with { ChatInput = ChatInputState.Open, ActiveDestination = expected.ActiveDestination,
+                ActiveChannelId = expected.ActiveChannelId };
+        return Validate(expected, check, fresh);
+    }
+
     public static string? Validate(GameContext? original, GameContext? context, bool fresh)
     {
         if(!fresh || context is null || original is null)

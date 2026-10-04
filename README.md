@@ -10,12 +10,13 @@ Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required
 
 ## Controller workflow
 
-1. Open the game's chat input using your mapped controller button.
-2. Click the right stick to start recording, speak, then click it again to stop. Recording is capped at 30 seconds.
-3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft.
-4. Once the draft is ready, **click the right stick a third time to paste**. Press the game's mapped send button separately to send. Wait for Ready between the second and third click; a double-click is not required.
+1. Keep chat closed while moving. Click the right stick to start recording.
+2. Speak, then click the right stick again to stop. Recording is capped at 30 seconds.
+3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft. You can keep moving while it works.
+4. Once the draft is ready, **click the right stick a third time to open chat and paste**. The app waits for addon-confirmed focus before requesting one Ctrl+V shortcut. If chat or a supported search field is already focused, it only pastes.
+5. **Press A in the game to send** (or the game's mapped confirmation button). The app stops after paste.
 
-The third controller click generates one Ctrl+V shortcut. It does not open chat, select or clear existing text, or press Enter. Paste requires fresh addon context, the same active chat destination/field, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. You can still paste manually. Keyboard dictation retains its original cancel-ready behavior. Unbind the game's right-stick click action (normally Ping in beta) so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
+The chat-open Enter request is made only when fresh addon context reports closed chat and no focused field. There is no Enter request after paste. The app does not select or clear existing text. Paste requires fresh matching addon context, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. Missing or unknown context requires manual opening/pasting. Keyboard dictation retains its cancel-ready behavior. Unbind the game's right-stick click action so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
 
 ## How audience routing works
 
@@ -54,6 +55,6 @@ Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream
 Dependencies, NuGet graphs, native commits and model checksums are pinned. The normal build verifies downloads, builds native libraries, runs core/routing/classifier tests and packages one self-contained ZIP. `scripts/Train.ps1` retrains explicitly using held-out paraphrase families. See [controller tests](docs/CONTROLLER-TEST.md) and [measured component results](docs/TEST-RESULTS.md).
 
 The original upstream `build.ps1`, installer, CLI and website are retained for provenance; use this fork's `scripts/Build.ps1`. CI compiles and tests source without automatically publishing installers. Prereleases are published separately with their validation status and checksums.
-For temporary clipboard-only testing, set `AllowUnverifiedSayDrafts` to `true` in `capture.json`. Unconfigured chat context then produces a standalone Say draft without claiming a verified prefix or game limit. Explicit unavailable audiences remain blocked. Third-click paste for these drafts requires an advancing heartbeat, matching session/context, and focused Say chat reported by the addon. It never opens chat or sends. Missing/stale context still permits manual paste only; search-field verification still applies. The default is `false`.
+For temporary clipboard-only testing, set `AllowUnverifiedSayDrafts` to `true` in `capture.json`. Unconfigured chat context then produces a standalone Say draft without claiming a verified prefix or game limit. Explicit unavailable audiences remain blocked. Third-click paste for these drafts requires an advancing heartbeat, matching session/context, and focused Say chat reported by the addon. The third click opens chat if it is closed, waits for addon-confirmed focus, and pastes once. Press A in the game to send; the app never sends. Missing/stale context still permits manual paste only; search-field verification still applies. The default is `false`.
 
 The Whisper prompt includes WoW shorthand, common materials, cities and dungeons. It improves the vocabulary hints supplied to Turbo without rewriting the transcript or changing the model. Recognition improvement on real WoW speech remains unmeasured. See [language training](training/README.md) for the expanded classifier corpus and candidate evaluation; the latest candidate was not activated because its Guild precision regressed.

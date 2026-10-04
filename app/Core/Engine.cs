@@ -559,9 +559,22 @@ public sealed class Engine : IAsyncDisposable
         long now = Environment.TickCount64;
         if (lastDictationClick != 0 && now - lastDictationClick < 250) return;
         lastDictationClick = now;
+        if (session.IsPasting) return;
         if (!session.IsReady) { session.Start(trigger); return; }
-        string? error = session.PastePrepared(() => router.ValidatePaste());
-        if (error is null) Log.Info("Draft pasted by controller request; sending remains manual.");
+        _ = OpenAndPasteByControllerAsync();
+    }
+
+    async Task OpenAndPasteByControllerAsync()
+    {
+        string? error;
+        try { error = await session.OpenAndPastePreparedAsync(router.InspectOpenPaste).ConfigureAwait(false); }
+        catch (Exception failure) { error = "Paste stopped: " + failure.Message; }
+        if (error is null)
+        {
+            if (!router.FocusedFieldAvailable) chat.Open();
+            Changed();
+            Log.Info("Draft pasted by controller request. Press A in the game to send.");
+        }
         else
         {
             Log.Warn(error);

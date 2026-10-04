@@ -370,9 +370,9 @@
                             </Grid.RowDefinitions>
 
                             <StackPanel VerticalAlignment="Center" Spacing="2">
-                                <TextBlock Text="Open chat (controller)" Style="{StaticResource ItemTitle}" />
+                                <TextBlock Text="Manual chat shortcut (optional)" Style="{StaticResource ItemTitle}" />
                                 <TextBlock Style="{StaticResource Caption}"
-                                           Text="The buttons WoW: Forever uses to open chat. If you change them in the game, change them here too. Picking Chat from the radial menu also works." />
+                                           Text="For opening chat yourself. Speech recording works with chat closed; the third dictation click opens chat and pastes. Keep this shortcut matched to the game's binding if you use it." />
                             </StackPanel>
                             <!-- The binding as the controller's own button icons, or "Press…" while recording. -->
                             <Border x:Name="OpenChatCap" Grid.Column="1" Style="{StaticResource Keycap}" />
@@ -380,7 +380,7 @@
 
                             <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Dictate (controller)" Style="{StaticResource ItemTitle}" />
-                                <TextBlock Style="{StaticResource Caption}" Text="With chat open: click to record, click to finish, then click again when Ready to paste. Send separately using the game button." />
+                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Review, then press A in the game to send." />
                             </StackPanel>
                             <Border x:Name="DictateCap" Grid.Row="1" Grid.Column="1" Style="{StaticResource Keycap}" />
                             <Button x:Name="DictateButton" Grid.Row="1" Grid.Column="2" Content="Change" Style="{StaticResource PanelButton}" Click="DictateButton_Click" />

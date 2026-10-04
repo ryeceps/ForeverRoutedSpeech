@@ -10,11 +10,11 @@ public sealed class HomeStatusTests
         HomeStatus.Of(error, running, phase, hasModel, loading, controller, chatOpen, key);
 
     [Fact]
-    public void AllSetIsReadyAndSaysWhichButtonsToPress()
+    public void ClosedChatReadinessUsesDictationWithoutRequiringManualChatShortcut()
     {
         var status = Of();
         Assert.Equal(("Ready", StatusTone.Ready), (status.Headline, status.Tone));
-        Assert.Contains("{0}", status.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("{0}", status.Detail, StringComparison.Ordinal);
         Assert.Contains("{1}", status.Detail, StringComparison.Ordinal);
     }
 
@@ -34,12 +34,14 @@ public sealed class HomeStatusTests
     }
 
     [Fact]
-    public void ReadyToPasteSaysHowToPasteAndCancel()
+    public void ControllerReadyOffersOpenPasteAndManualSendWhileKeyboardRetainsCancel()
     {
         var ready = Of(phase: DictationPhase.Ready, chatOpen: true);
         Assert.Equal("Ready to paste", ready.Headline);
-        Assert.Contains("Ctrl+V", ready.Detail, StringComparison.Ordinal);
-        Assert.Contains("{1}", ready.Detail, StringComparison.Ordinal); // the dictate button cancels
+        Assert.Contains("open chat and paste", ready.Detail, StringComparison.Ordinal);
+        Assert.Contains("{1}", ready.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("cancel", ready.Detail, StringComparison.Ordinal);
+        Assert.Contains("press A", ready.Detail, StringComparison.Ordinal);
         Assert.Contains("F8", Of(controller: false, key: "F8", phase: DictationPhase.Ready).Detail, StringComparison.Ordinal);
     }
 

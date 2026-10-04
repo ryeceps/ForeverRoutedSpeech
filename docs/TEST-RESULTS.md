@@ -1,5 +1,16 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 4: open chat and paste, separate A confirmation
+
+The local app now records/transcribes with chat closed. A third deliberate controller click requests chat opening only if the addon reports closed chat, waits for confirmed focus, then requests one paste. A separate game confirmation press sends the text. Already focused chat/search fields receive paste only. There is no post-paste Enter or automatic submission setting in this build.
+
+- 142 core unit tests passed, including 12 named open/paste workflow and context tests; see [the test contract](../tests/OPEN-PASTE-TESTS.md).
+- 124 deterministic routing assertions passed.
+- Lua 5.1 addon probe mocks passed.
+- Release GUI build completed with zero warnings/errors, and the local self-contained package was rebuilt.
+
+These results validate local decisions and simulated input requests. Live movement, chat opening/paste, and physical A confirmation still need testing in the running game. The older GitHub release ZIP has not been replaced by this local build. The deferred automatic-submit prototype was archived outside the build; it is not included.
+
 - 130 upstream/fork core tests passed, including controller edges, microphone endpointing, clipboard handling, settings, downloads and Turbo-only behavior.
 - 91 deterministic routing assertions passed against the fork's routing core.
 - 19 real-classifier/default checks passed: persistent fastText-only loading, explicit destinations, trained guild address, numbered-channel changes, group transitions, invalid/oversized text, Unicode, AH plain text, missing/stale context, manual confirmation and Turbo-only defaults.

@@ -10,7 +10,7 @@ namespace SpeakForever.Interop;
 public static partial class Native
 {
     const uint CF_UNICODETEXT = 13, GMEM_MOVEABLE = 0x2;
-    static readonly int[] PasteModifiers = [0x10, 0x11, 0x12, 0x5B, 0x5C, 0x56];
+    static readonly int[] PasteModifiers = [0x10, 0x11, 0x12, 0x5B, 0x5C, 0x56, 0x0D];
     const int OpenAttempts = 10, OpenRetryMs = 20;
     static readonly IntPtr HWND_MESSAGE = -3;
 
@@ -75,6 +75,20 @@ public static partial class Native
     public static string? PasteCopied(uint version, out bool attempted)
     {
         attempted = false;
+        if (CheckInput(version) is { } blocked) return blocked;
+        PasteInput[] keys = [new() { Type = 1, Key = 0x11 }, new() { Type = 1, Key = 0x56 },
+            new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
+        attempted = true;
+        uint sent = SendInput((uint)keys.Length, keys, Marshal.SizeOf<PasteInput>());
+        if (sent == keys.Length) return null;
+        // Release only; never replay a partial paste or elevate to bypass Windows input restrictions.
+        PasteInput[] release = [new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
+        SendInput((uint)release.Length, release, Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the full paste shortcut. Inspect the game field and paste manually if needed.";
+    }
+
+    static string? CheckInput(uint version)
+    {
         if (!Environment.Is64BitProcess) return "Controller paste requires Windows x64.";
         nint window = GetForegroundWindow();
         if (!WindowsCapture.IsGameForeground(Settings.Load())) return "Return to the game before pasting.";
@@ -94,15 +108,20 @@ public static partial class Native
         if (version == 0 || GetClipboardSequenceNumber() != version)
             return "Clipboard changed. Review and recopy the draft before pasting.";
         if (GetForegroundWindow() != window) return "Game focus changed; paste manually.";
-        PasteInput[] keys = [new() { Type = 1, Key = 0x11 }, new() { Type = 1, Key = 0x56 },
-            new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
+        return null;
+    }
+
+    /// <summary>Requests Enter only to open a confirmed closed chat; never to submit text.</summary>
+    public static string? OpenChat(uint version, out bool attempted)
+    {
+        attempted = false;
+        if (CheckInput(version) is { } blocked) return blocked;
+        PasteInput[] keys = [new() { Type = 1, Key = 0x0D }, new() { Type = 1, Key = 0x0D, Flags = 2 }];
         attempted = true;
-        uint sent = SendInput((uint)keys.Length, keys, Marshal.SizeOf<PasteInput>());
-        if (sent == keys.Length) return null;
-        // Release only; never replay a partial paste or elevate to bypass Windows input restrictions.
-        PasteInput[] release = [new() { Type = 1, Key = 0x56, Flags = 2 }, new() { Type = 1, Key = 0x11, Flags = 2 }];
-        SendInput((uint)release.Length, release, Marshal.SizeOf<PasteInput>());
-        return "Windows did not accept the full paste shortcut. Inspect the game field and paste manually if needed.";
+        if (SendInput(2, keys, Marshal.SizeOf<PasteInput>()) == 2) return null;
+        PasteInput[] release = [new() { Type = 1, Key = 0x0D, Flags = 2 }];
+        SendInput(1, release, Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the chat-open shortcut. Inspect the game; no retry was made.";
     }
 
     [LibraryImport("user32.dll", SetLastError = true)]

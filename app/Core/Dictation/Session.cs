@@ -4,14 +4,14 @@ using SpeakForever.Interop;
 using SpeakForever.Logging;
 using SpeakForever.Speech;
 using SpeakForever.Routing;
+using VoiceRouter.Core;
 
 namespace SpeakForever.Dictation;
 
 /// <summary>
 /// One dictation at a time: record until you pause (or press the trigger again) → transcribe →
 /// copy to the clipboard. A separate controller click requests paste; sending stays manual.
-/// Keyboard dictation retains its cancel-ready behavior. From the controller it only starts with the game's
-/// chat box open; the keyboard shortcut works any time, like Win+H.
+/// Keyboard dictation retains its cancel-ready behavior. Controller recording can start with chat closed; the keyboard shortcut works any time, like Win+H.
 /// </summary>
 /// <param name="settings">The current settings; each dictation reads them once, at its start.</param>
 /// <param name="currentModel">The loaded model at the moment it's needed; it can change between dictations.</param>
@@ -25,25 +25,47 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     CancellationTokenSource? active;
     CancellationTokenSource? finishing; // set while recording; triggering it ends the recording now
     volatile bool ready; // our text is on the clipboard, waiting to be pasted
+    CancellationTokenSource? pasting;
+    public bool IsPasting { get { lock (gate) return pasting is not null; } }
     uint copied; // the clipboard's sequence number when it was put there
 
     /// <summary>Text is on the clipboard, waiting to be pasted.</summary>
     public bool IsReady => ready;
 
-    /// <summary>A deliberate controller click pastes a ready draft once; never sends.</summary>
-    public string? PastePrepared(Func<string?> validate)
+    /// <summary>A deliberate click opens chat if needed and pastes once; sending stays manual.</summary>
+    public async Task<string?> OpenAndPastePreparedAsync(Func<bool, bool, (string? Error, GameContext? Context)> inspect)
     {
+        CancellationTokenSource cts;
+        uint version;
         lock (gate)
         {
-            if (active is not null || !ready) return "Wait for a ready draft before pasting.";
-            if (validate() is { } blocked) return blocked;
-            string? error = Native.PasteCopied(copied, out bool attempted);
-            if (attempted)
+            if (active is not null || pasting is not null || !ready) return "Wait for a ready draft before pasting.";
+            pasting = cts = new();
+            version = copied;
+            ready = false; // our own Enter must not be mistaken for a manual send
+        }
+        OpenPasteResult result = new("Paste stopped.", false);
+        try
+        {
+            (string? Error, bool Attempted) Input(DraftInput action)
             {
-                ready = false;
-                phase(DictationPhase.Idle);
+                bool attempted;
+                string? error = action == DraftInput.OpenChat
+                    ? Native.OpenChat(version, out attempted) : Native.PasteCopied(version, out attempted);
+                return (error, attempted);
             }
-            return error;
+            result = await OpenPasteWorkflow.RunAsync(inspect, Input, cts.Token).ConfigureAwait(false);
+            return result.Error;
+        }
+        finally
+        {
+            lock (gate)
+            {
+                ready = !result.Attempted && !cts.IsCancellationRequested;
+                pasting = null;
+                phase(ready ? DictationPhase.Ready : DictationPhase.Idle);
+                cts.Dispose();
+            }
         }
     }
 
@@ -53,7 +75,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     {
         lock (gate)
         {
-            if (active is not null) return new("", null, "Unconfirmed", "Wait for dictation to finish.", 0);
+            if (active is not null || pasting is not null) return new("", null, "Unconfirmed", "Wait for dictation to finish.", 0);
             ready = false;
             phase(DictationPhase.Idle);
             var draft = prepare();
@@ -73,6 +95,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         var cfg = settings();
         lock (gate)
         {
+            if (pasting is not null) return;
             if (active is not null)
             {
                 if (finishing is { } f)
@@ -119,6 +142,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         bool cancelled = false, done = false;
         lock (gate)
         {
+            pasting?.Cancel();
             if (active is not null)
             {
                 active.Cancel();
