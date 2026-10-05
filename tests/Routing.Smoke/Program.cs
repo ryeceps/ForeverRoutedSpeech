@@ -73,6 +73,8 @@ using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? th
 using(var previewRouter=new DraftRouter(Path.Combine(package,"models"),()=>context,()=>true))
 {
     Check(previewRouter.Prepare("Hello friends").ClipboardText=="/say Hello friends","Unverified setup opt-in copies Say preview");
+    Check(previewRouter.Prepare("In trade, selling linen").ClipboardText=="/2 selling linen","Setup skip honors explicit joined Trade channel");
+    Check(!previewRouter.Prepare("In general, hello").Ready,"Setup skip blocks unjoined General instead of Say fallback");
     Check(!previewRouter.Prepare("Tell guild hello").Ready,"Setup skip does not redirect explicit unavailable audience");
     Check(!previewRouter.Prepare("/logout").Ready,"Setup skip blocks leading slash");
     Check(!previewRouter.Prepare(" ").Ready,"Setup skip preserves clipboard on silence");

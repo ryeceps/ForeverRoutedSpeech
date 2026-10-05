@@ -8,7 +8,7 @@ public sealed class Router(InferencePolicy policy)
     private static readonly IReadOnlyDictionary<Destination, double> EmptyScores = new Dictionary<Destination, double>();
     private static readonly (Destination Destination, string Name)[] Names =
     [ (Destination.Say, "everyone around me"), (Destination.Say, "everyone nearby"), (Destination.LookingForGroup, "looking for group"),
-      (Destination.Instance, "instance"), (Destination.General, "general"), (Destination.Guild, "guild"),
+      (Destination.LookingForGroup, "lfg"), (Destination.Instance, "instance"), (Destination.General, "general"), (Destination.Guild, "guild"),
       (Destination.Party, "party"), (Destination.Raid, "raid"), (Destination.Trade, "trade"), (Destination.Say, "say") ];
 
     public RouteDecision Decide(Transcript transcript, GameContext? context, bool fresh,
@@ -73,12 +73,34 @@ public sealed class Router(InferencePolicy policy)
         return draft.Valid ? draft with {Explanation=decision.Explanation} : draft;
     }
 
+    /// <summary>Opt-in setup-skipped drafts: Say or an explicit joined numbered channel, never inferred public routing.</summary>
+    public static (RouteDecision Decision, ChatDraft Draft) SetupSkippedDraft(Transcript transcript, GameContext context)
+    {
+        string text = transcript.Text.Trim();
+        var instruction = ParseExplicit(text, context, EmptyScores);
+        if (instruction is null || instruction.Destination == Destination.Say)
+        {
+            var say = StandaloneDraft(transcript);
+            return (new(Destination.Say, null, EmptyScores, RouteReason.SayDefault, say.Explanation, say.Message), say);
+        }
+        if (instruction.Destination is not (Destination.General or Destination.Trade or Destination.LookingForGroup or Destination.Custom) ||
+            instruction.ChannelId is null || transcript.Status != TranscriptionStatus.Success)
+            return (instruction, new(instruction.Message, null, false,
+                "Requested audience is unavailable or requires chat setup. Choose another destination; it was not changed to Say."));
+        // The user explicitly opted out of compatibility setup. This is a draft cap, not a measured game limit.
+        var temporary = context with { VerifiedPrefixes = new Dictionary<Destination, string> { [Destination.Custom] = "numbered" },
+            MessageLimit = context.MessageLimit > 0 ? context.MessageLimit : 4096,
+            LimitIsBytes = context.MessageLimit > 0 ? context.LimitIsBytes : true };
+        instruction = instruction with { Explanation = "Explicit joined channel; compatibility setup skipped. Prefix and game length limit are unverified." };
+        return (instruction, Draft(instruction.Message, instruction, temporary, true));
+    }
+
     private static RouteDecision? ParseExplicit(string text, GameContext? context, IReadOnlyDictionary<Destination, double> scores)
     {
         var candidates = Names.Concat(context?.Channels.Where(c => c.Kind == Destination.Custom).Select(c => (Destination.Custom, c.Name)) ?? []);
         foreach (var (destination, name) in candidates.OrderByDescending(n => n.Item2.Length))
         {
-            var match = Regex.Match(text, @"^(?:tell|say to|ask in|speak to|send to)\s+(?:the\s+)?" + Regex.Escape(name) + @"(?:\s+chat)?(?:[,.:]\s*|\s+|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            var match = Regex.Match(text, @"^(?:(?:tell|say to|say in|ask in|speak to|send to|send in|post in|in|to)\s+(?:the\s+)?|(?=" + Regex.Escape(name) + @"(?:\s+chat)?[,.:]))" + Regex.Escape(name) + @"(?:\s+chat)?(?:[,.:]\s*|\s+|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             if (!match.Success) continue;
             string message = text[match.Length..].Trim();
             if (message.StartsWith("that ", StringComparison.OrdinalIgnoreCase)) message = message[5..];

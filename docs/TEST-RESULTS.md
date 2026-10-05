@@ -1,5 +1,13 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 4: explicit numbered-channel speech
+
+Leading `In General, ...`, `In Trade, ...`, `In LFG, ...`, and named custom-channel instructions now select the current joined channel number and remove only the instruction. Leading `General, ...` and `Say in Trade ...` also work. References elsewhere in the message and negated instructions remain ordinary speech. Missing/stale context and unjoined destinations do not fall back to Say.
+
+The existing compatibility-skip opt-in now permits explicit joined numbered-channel drafts as well as Say. Prefix and game limit remain unverified in this temporary mode, public inference remains disabled, and the fallback draft cap is 4096 bytes. Normal verified routing still uses the measured client limit.
+
+159 core tests passed, including 17 explicit-channel test cases. The 124 deterministic routing assertions and native integration smoke checks passed, including Trade renumbering, explicit Trade in temporary mode, and rejection of unjoined General. These are local component tests; live General/Trade delivery needs a player test.
+
 ## October 4: open chat and paste, separate A confirmation
 
 The local app now records/transcribes with chat closed. A third deliberate controller click requests chat opening only if the addon reports closed chat, waits for confirmed focus, then requests one paste. A separate game confirmation press sends the text. Already focused chat/search fields receive paste only. There is no post-paste Enter or automatic submission setting in this build.

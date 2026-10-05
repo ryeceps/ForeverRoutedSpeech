@@ -100,9 +100,11 @@ public sealed class DraftRouter : IDisposable
                 {
                     // The opt-in draft pins Say; a later paste must find focused Say chat in this same session.
                     copiedContext=context with {ActiveDestination=Destination.Say,ActiveChannelId=null,ActivePanelUnsupported=false};
-                    var preview=Router.StandaloneDraft(new(text,TranscriptionStatus.Success));
-                    return new(preview.Message,preview.ClipboardText,preview.Valid ? "Say (setup skipped)" : "Unconfirmed",
-                        preview.Valid ? "Chat compatibility setup skipped. Say draft copied. Click the stick to open Say chat and paste, then press A to send. Actual game length limit is unverified." : preview.Explanation,
+                    var (temporaryDecision, preview) = Router.SetupSkippedDraft(new(text, TranscriptionStatus.Success), context);
+                    string temporaryAudience = temporaryDecision.ChannelId is int temporaryId ? $"{temporaryDecision.ChannelName} (/{temporaryId}, setup skipped)" : "Say (setup skipped)";
+                    return new(preview.Message, preview.ClipboardText, preview.Valid ? temporaryAudience : "Unconfirmed",
+                        preview.Valid ? "Chat compatibility setup skipped. " + (temporaryDecision.ChannelId is not null ? "Explicit joined channel selected. " : "Say draft copied. ") +
+                            "Click the stick to open Say chat and paste, then press A to send. Prefix and game length limit are unverified." : preview.Explanation,
                         timing.Elapsed.TotalMilliseconds);
                 }
                 string setup=context.VerifiedPrefixes.Count==0
