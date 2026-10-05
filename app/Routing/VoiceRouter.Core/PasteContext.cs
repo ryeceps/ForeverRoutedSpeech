@@ -27,7 +27,7 @@ public static class PasteContext
             return "Focus the verified chat or Auction House field before pasting.";
         if(context.Session != original.Session || context.ClientBuild != original.ClientBuild ||
             context.Group != original.Group || context.InGuild != original.InGuild ||
-            context.MessageLimit != original.MessageLimit || context.LimitIsBytes != original.LimitIsBytes ||
+            context.MessageLimit != original.MessageLimit || context.LimitIsBytes != original.LimitIsBytes || context.UsesClassicDefaults != original.UsesClassicDefaults ||
             context.FocusedText != original.FocusedText ||
             context.ActiveDestination != original.ActiveDestination || context.ActiveChannelId != original.ActiveChannelId ||
             context.ActivePanelUnsupported != original.ActivePanelUnsupported ||

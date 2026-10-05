@@ -79,6 +79,12 @@ using(var previewRouter=new DraftRouter(Path.Combine(package,"models"),()=>conte
     Check(!previewRouter.Prepare("/logout").Ready,"Setup skip blocks leading slash");
     Check(!previewRouter.Prepare(" ").Ready,"Setup skip preserves clipboard on silence");
 }
+using(var classicRouter=new DraftRouter(Path.Combine(package,"models"),()=>context,()=>false,()=>true))
+{
+    Check(classicRouter.Prepare("In trade, selling cloth").ClipboardText=="/2 selling cloth","Classic defaults route explicit current Trade without setup");
+    Check(classicRouter.Prepare("Hello friends").Destination=="Say","Classic defaults remove setup skipped label");
+    Check(!classicRouter.Prepare(new string('x',201)).Ready,"Classic draft cap rejects oversized text");
+}
 Check(ModelCatalog.All.Count==1 && ModelCatalog.All[0].Name=="Turbo","Only Turbo offered");
 Check(!new Config().CheckForUpdates && new Config().MaxSeconds==30 && !new Config().FinishOnPause,"Fork defaults");
 if(args.Length>1)

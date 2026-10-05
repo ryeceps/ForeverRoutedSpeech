@@ -33,10 +33,12 @@ public sealed class DraftRouter : IDisposable
     private GameContext? copiedContext;
     private readonly Func<GameContext> readContext;
     private readonly Func<bool> allowUnverifiedSayDrafts;
-    public DraftRouter(string folder, Func<GameContext>? contextReader = null, Func<bool>? allowUnverifiedSayDrafts = null)
+    private readonly Func<bool> useClassicDefaults;
+    public DraftRouter(string folder, Func<GameContext>? contextReader = null, Func<bool>? allowUnverifiedSayDrafts = null, Func<bool>? useClassicDefaults = null)
     {
         readContext = contextReader ?? (() => WindowsCapture.Read(Settings.Load()));
         this.allowUnverifiedSayDrafts = allowUnverifiedSayDrafts ?? (() => Settings.Load().AllowUnverifiedSayDrafts);
+        this.useClassicDefaults = useClassicDefaults ?? (() => contextReader is null && Settings.Load().UseClassicChatDefaults);
         try
         {
             using var policy=JsonDocument.Parse(File.ReadAllText(Path.Combine(folder,"router-policy.json")));
@@ -69,7 +71,11 @@ public sealed class DraftRouter : IDisposable
         lock(gate)
         {
             if(disposed) return;
-            try {tracker.Accept(readContext(),clock.Elapsed);}
+            try
+            {
+                var context = readContext();
+                tracker.Accept(useClassicDefaults() ? ClassicChatDefaults.Apply(context) : context, clock.Elapsed);
+            }
             catch(Exception e) when(e is IOException or FormatException or ExternalException or ArgumentException or InvalidOperationException)
             {tracker.Invalidate();}
         }
@@ -90,7 +96,7 @@ public sealed class DraftRouter : IDisposable
             if(!fresh)
             {
                 copiedContext=null; // standalone clipboard text must never acquire a game paste target later
-                var standalone=Router.StandaloneDraft(new(text,TranscriptionStatus.Success));
+                var standalone=Router.StandaloneDraft(new(text,TranscriptionStatus.Success), useClassicDefaults() ? ClassicChatDefaults.DraftByteLimit : 4096);
                 return new(standalone.Message,standalone.ClipboardText,standalone.Valid ? "Say (standalone)" : "Unconfirmed",
                     standalone.Explanation,timing.Elapsed.TotalMilliseconds);
             }
@@ -128,7 +134,9 @@ public sealed class DraftRouter : IDisposable
             var decision=router.Decide(new(text,TranscriptionStatus.Success),context,fresh,scores);
             var draft=Router.Draft(decision.Message,decision,context,fresh);
             string audience=decision.ChannelId is int id ? $"{decision.ChannelName} (/{id})" : decision.Destination?.ToString() ?? "Unconfirmed";
-            return new(decision.Message,draft.ClipboardText,audience,draft.Explanation+(modelError.Length>0 ? " Classifier unavailable: "+modelError : ""),timing.Elapsed.TotalMilliseconds);
+            return new(decision.Message,draft.ClipboardText,audience,draft.Explanation+
+                (context.UsesClassicDefaults ? " Classic chat defaults; app cap " + context.MessageLimit + " UTF-8 bytes." : "")+
+                (modelError.Length>0 ? " Classifier unavailable: "+modelError : ""),timing.Elapsed.TotalMilliseconds);
         }
     }
     public RoutedDraft Confirm(string text, string prefix, int verifiedLimit, bool bytes)

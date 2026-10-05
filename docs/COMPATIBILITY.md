@@ -1,6 +1,8 @@
 # Forever compatibility gate
 
-**Policy gate:** Sending has been removed from the current app pending Blizzard authorization. The chat-input probe below is retained for possible future evaluation; it cannot enable sending in this build. API tests do not establish ToS compliance. See [policy review](POLICY.md).
+**Default setup:** the companion now assumes Classic chat command prefixes and caps drafts at 200 UTF-8 bytes. No manual prefix/length confirmation is required in that mode; live addon context is still required for automated input. Optional final-click auto-send is off by default. These defaults do not establish Blizzard approval or a measured Forever message limit.
+
+The steps below apply to optional measured compatibility mode (`UseClassicChatDefaults=false`).
 
 The [Blizzard announcement](https://news.blizzard.com/en-us/article/24301145/world-of-warcraft-at-blizzcon-2026-news-round-up) identifies Forever as a separate client. It does not establish addon API compatibility. **No live Forever client has been tested by this build.** A successful desktop build or mocked Lua test is not client evidence.
 

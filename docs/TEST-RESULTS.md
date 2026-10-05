@@ -1,5 +1,9 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 4: Classic chat defaults and reasonable draft cap
+
+Added default Classic-style prefix assumptions and a 200 UTF-8 byte app cap, honoring smaller recorded limits conservatively. This removes the setup-skipped draft label with fresh live context. Actual joined channel numbers, membership, focus/readback, session and heartbeat remain required; unjoined destinations stay unavailable. Assumptions are applied locally and do not mark the addon's compatibility evidence as verified. 184 core tests passed, including Unicode boundaries, live renumbering, unjoined destinations, stale context and search-limit preservation.
+
 ## October 4: close chat after optional submission
 
 Auto-send now waits for chat closure after its one submit request. A fresh, changed heartbeat reporting an empty still-focused chat permits one Escape fallback. Remaining text, changed focus/context, cancellation, or stale evidence stops the close action; submission is never repeated. 174 core tests passed, covering natural closure, the empty-chat Escape fallback, remaining text, and focus loss after submission. Live game closure remains to be tested.

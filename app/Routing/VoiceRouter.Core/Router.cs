@@ -58,7 +58,7 @@ public sealed class Router(InferencePolicy policy)
     }
 
     /// <summary>Preview/copy without game context. The 4096-byte cap is a draft cap, not a verified game limit.</summary>
-    public static ChatDraft StandaloneDraft(Transcript transcript)
+    public static ChatDraft StandaloneDraft(Transcript transcript, int draftByteLimit = 4096)
     {
         string message=transcript.Text.Trim();
         if(transcript.Status!=TranscriptionStatus.Success || message.Length==0)
@@ -69,7 +69,7 @@ public sealed class Router(InferencePolicy policy)
         if(instruction is not null) message=instruction.Message;
         var decision=new RouteDecision(Destination.Say,null,EmptyScores,RouteReason.SayDefault,
             "Standalone Say draft; no game context. The game prefix and length limit are unverified. Controller paste is disabled until game context is verified.",message);
-        var draft=Draft(message,decision,null,false,true,"/say",4096,true);
+        var draft=Draft(message,decision,null,false,true,"/say",draftByteLimit,true);
         return draft.Valid ? draft with {Explanation=decision.Explanation} : draft;
     }
 
@@ -163,7 +163,7 @@ public sealed class Router(InferencePolicy policy)
         bool bytes = fresh && context is not null ? context.LimitIsBytes : manualBytes;
         int length = bytes ? Encoding.UTF8.GetByteCount(message) : message.EnumerateRunes().Count();
         if (limit <= 0) return new(message, prefix, false, "Client message limit is unverified.");
-        return length > limit ? new(message, prefix, false, $"Message exceeds the verified {limit} {(bytes ? "byte" : "character")} limit. Edit before copying.") :
+        return length > limit ? new(message, prefix, false, $"Message exceeds the {(context?.UsesClassicDefaults == true ? "app" : "verified")} {limit} {(bytes ? "byte" : "character")} limit. Edit before copying.") :
             new(message, prefix, true, decision.Explanation);
     }
 }
