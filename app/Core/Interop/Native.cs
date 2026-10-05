@@ -10,7 +10,7 @@ namespace SpeakForever.Interop;
 public static partial class Native
 {
     const uint CF_UNICODETEXT = 13, GMEM_MOVEABLE = 0x2;
-    static readonly int[] PasteModifiers = [0x10, 0x11, 0x12, 0x5B, 0x5C, 0x56, 0x0D];
+    static readonly int[] PasteModifiers = [0x10, 0x11, 0x12, 0x5B, 0x5C, 0x56, 0x0D, 0x1B];
     const int OpenAttempts = 10, OpenRetryMs = 20;
     static readonly IntPtr HWND_MESSAGE = -3;
 
@@ -128,6 +128,19 @@ public static partial class Native
 
     /// <summary>Requests Enter once after the caller confirms pasted text and audience.</summary>
     public static string? SubmitChat(uint version, out bool attempted) => RequestEnter(version, out attempted);
+
+    /// <summary>Requests Escape once after fresh readback confirms an empty chat still has focus.</summary>
+    public static string? CloseChat(uint version, out bool attempted)
+    {
+        attempted = false;
+        if (CheckInput(version) is { } blocked) return blocked;
+        PasteInput[] keys = [new() { Type = 1, Key = 0x1B }, new() { Type = 1, Key = 0x1B, Flags = 2 }];
+        attempted = true;
+        if (SendInput(2, keys, Marshal.SizeOf<PasteInput>()) == 2) return null;
+        PasteInput[] release = [new() { Type = 1, Key = 0x1B, Flags = 2 }];
+        SendInput(1, release, Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the chat-close shortcut. Close chat manually; no retry was made.";
+    }
 
     [LibraryImport("user32.dll", SetLastError = true)]
     private static partial uint SendInput(uint count, [In] PasteInput[] inputs, int size);

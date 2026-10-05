@@ -2,7 +2,7 @@ using SpeakForever.Routing;
 using VoiceRouter.Core;
 
 namespace SpeakForever.Dictation;
-enum SubmissionInput { OpenChat, Paste, Submit }
+enum SubmissionInput { OpenChat, Paste, Submit, CloseChat }
 sealed record SubmissionResult(string? Error,bool Attempted);
 
 static class SubmissionWorkflow
@@ -53,7 +53,27 @@ static class SubmissionWorkflow
                 {
                     ct.ThrowIfCancellationRequested();
                     var send=input(SubmissionInput.Submit);attempted|=send.Attempted;
-                    return Result(send.Error);
+                    if(send.Error is not null) return Result(send.Error);
+                    bool closeRequested=false;
+                    for(int closeCheck=0;closeCheck<30;closeCheck++)
+                    {
+                        await delay(ct).ConfigureAwait(false);
+                        ct.ThrowIfCancellationRequested();
+                        var after=inspect(true);
+                        if(after.Error is not null) return Result("Submit requested, but closing stopped: "+after.Error);
+                        if(after.Context is not { } current) return Result("Submit requested; chat closure could not be confirmed.");
+                        if(current.ChatInput==ChatInputState.Closed && current.FocusedText is null) return Result(null);
+                        // Wait for new addon evidence. Never discard unsent text or dismiss another field/menu.
+                        if(!closeRequested && current.Heartbeat!=echo.Context!.Heartbeat &&
+                            current.ChatInput==ChatInputState.Open && current.FocusedText is null && SubmissionGate.Matches(current,""))
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            var close=input(SubmissionInput.CloseChat);attempted|=close.Attempted;
+                            if(close.Error is not null) return Result(close.Error);
+                            closeRequested=true;
+                        }
+                    }
+                    return Result("Submit requested, but chat closure was not confirmed. Close it with the game's Back button; no submission was repeated.");
                 }
                 await delay(ct).ConfigureAwait(false);
             }

@@ -22,6 +22,7 @@ public sealed class SubmissionWorkflowTests
             actions.Add(action);
             if(action==SubmissionInput.OpenChat) context=Context();
             if(action==SubmissionInput.Paste) context=Context("Hello");
+            if(action==SubmissionInput.Submit) context=Context(input:ChatInputState.Closed) with { Heartbeat=2 };
             return(null,true);
         },CancellationToken.None,NoDelay);
         Assert.Null(result.Error);
@@ -149,5 +150,58 @@ public sealed class SubmissionWorkflowTests
             }, cancel.Token, NoDelay);
         Assert.NotNull(result.Error);
         Assert.Equal([SubmissionInput.OpenChat], actions);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SubmitClosesNaturallyOrEscapesEmptyChatExactlyOnce(bool closesNaturally)
+    {
+        var context = Context();
+        var actions = new List<SubmissionInput>();
+        var result = await SubmissionWorkflow.RunAsync(Draft, _ => (null, context), action =>
+        {
+            actions.Add(action);
+            if (action == SubmissionInput.Paste) context = Context("Hello");
+            if (action == SubmissionInput.Submit) context = Context(input: closesNaturally ? ChatInputState.Closed : ChatInputState.Open) with { Heartbeat = 2 };
+            if (action == SubmissionInput.CloseChat) context = Context(input: ChatInputState.Closed) with { Heartbeat = 3 };
+            return (null, true);
+        }, CancellationToken.None, NoDelay);
+        Assert.Null(result.Error);
+        Assert.Equal(closesNaturally ? [SubmissionInput.Paste, SubmissionInput.Submit] :
+            new[] { SubmissionInput.Paste, SubmissionInput.Submit, SubmissionInput.CloseChat }, actions);
+    }
+
+    [Fact]
+    public async Task RemainingTextAfterSubmitIsNotDiscardedOrResent()
+    {
+        var context = Context();
+        var actions = new List<SubmissionInput>();
+        var result = await SubmissionWorkflow.RunAsync(Draft, _ => (null, context), action =>
+        {
+            actions.Add(action);
+            if (action == SubmissionInput.Paste) context = Context("Hello");
+            if (action == SubmissionInput.Submit) context = Context("Still here") with { Heartbeat = 2 };
+            return (null, true);
+        }, CancellationToken.None, NoDelay);
+        Assert.NotNull(result.Error);
+        Assert.Equal([SubmissionInput.Paste, SubmissionInput.Submit], actions);
+    }
+
+    [Fact]
+    public async Task FocusChangeAfterSubmitRequestsNoEscape()
+    {
+        var context = Context();
+        bool submitted = false;
+        var actions = new List<SubmissionInput>();
+        var result = await SubmissionWorkflow.RunAsync(Draft, _ => submitted ? ("focus changed", null) : (null, context), action =>
+        {
+            actions.Add(action);
+            if (action == SubmissionInput.Paste) context = Context("Hello");
+            if (action == SubmissionInput.Submit) submitted = true;
+            return (null, true);
+        }, CancellationToken.None, NoDelay);
+        Assert.NotNull(result.Error);
+        Assert.Equal([SubmissionInput.Paste, SubmissionInput.Submit], actions);
     }
 }

@@ -90,6 +90,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
                 {
                     SubmissionInput.Paste => Native.PasteCopied(version, out attempted),
                     SubmissionInput.Submit => Native.SubmitChat(version, out attempted),
+                    SubmissionInput.CloseChat => Native.CloseChat(version, out attempted),
                     _ => Native.OpenChat(version, out attempted)
                 };
                 return (error, attempted);
