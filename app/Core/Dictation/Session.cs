@@ -69,6 +69,59 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         }
     }
 
+    public async Task<string?> SubmitPreparedAsync(RoutedDraft draft, Func<bool, (string? Error, GameContext? Context)> inspect)
+    {
+        CancellationTokenSource cts;
+        uint version;
+        lock (gate)
+        {
+            if (active is not null || pasting is not null || !ready || !draft.Ready) return "Wait for a ready draft.";
+            pasting = cts = new();
+            version = copied;
+            ready = false;
+        }
+        SubmissionResult result = new("Submission stopped.", false);
+        try
+        {
+            (string? Error, bool Attempted) Input(SubmissionInput action)
+            {
+                bool attempted;
+                string? error = action switch
+                {
+                    SubmissionInput.Paste => Native.PasteCopied(version, out attempted),
+                    SubmissionInput.Submit => Native.SubmitChat(version, out attempted),
+                    _ => Native.OpenChat(version, out attempted)
+                };
+                return (error, attempted);
+            }
+            result = await SubmissionWorkflow.RunAsync(draft, inspect, Input, cts.Token).ConfigureAwait(false);
+            return result.Error;
+        }
+        finally
+        {
+            lock (gate)
+            {
+                ready = !result.Attempted && !cts.IsCancellationRequested;
+                pasting = null;
+                phase(ready ? DictationPhase.Ready : DictationPhase.Idle);
+                cts.Dispose();
+            }
+        }
+    }
+
+    public void CancelByController()
+    {
+        lock (gate)
+        {
+            active?.Cancel();
+            pasting?.Cancel();
+            if (ready) Native.ClearClipboard(copied);
+            ready = false;
+            phase(DictationPhase.Idle);
+        }
+        Log.Info("Left-stick click: dictation/draft cancelled. Already submitted messages cannot be retracted.");
+    }
+
     public RoutedDraft CopyEdited(string text) => CopyPrepared(() => route(text));
 
     public RoutedDraft CopyPrepared(Func<RoutedDraft> prepare)

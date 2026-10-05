@@ -22,6 +22,7 @@ public sealed class Engine : IAsyncDisposable
     const int RescanMs = 1000; // look for a new controller once a second
     const int VK_RETURN = 0x0D, VK_ESCAPE = 0x1B, VK_CONTROL = 0x11, VK_V = 0x56;
 
+    static readonly Chord CancelControllerChord = Chord.Parse("LS");
     readonly HotkeyListener hotkey = new();
     readonly RadialMenu radialMenu = new();
     readonly ChatPanel chat = new();
@@ -138,6 +139,7 @@ public sealed class Engine : IAsyncDisposable
         try
         {
             var updated = change(config).Validated();
+            if (config.AutoSubmit && !updated.AutoSubmit) session.ChatClosing("Auto-send disabled");
             config = updated;
             await updated.SaveAsync(ct).ConfigureAwait(false);
         }
@@ -183,7 +185,7 @@ public sealed class Engine : IAsyncDisposable
         [
             ("opening chat", b.OpenChat), ("dictating", b.Dictate), ("the chat panel's Send", b.Send),
             ("the chat panel's Back", b.Back), .. b.Menus.Select(m => ("the chat panel's menus", m)),
-            ("the radial menu", b.Radial),
+            ("the radial menu", b.Radial), ("cancelling dictation", CancelControllerChord),
         ];
         var mine = which == BindingKind.OpenChat ? b.OpenChat : b.Dictate;
         foreach (var (name, other) in others)
@@ -493,6 +495,18 @@ public sealed class Engine : IAsyncDisposable
         var b = bindings;
         bool wasOpen = ChatOpen;
 
+        if (CancelControllerChord.FiredBy(prev, cur))
+        {
+            if (!probe)
+            {
+                LastDraft = null;
+                session.CancelByController();
+                Changed();
+            }
+            else Log.Info("Left-stick click: would cancel dictation/draft.");
+            return;
+        }
+
         if (radialMenu.IsOpen)
         {
             radialMenu.OnButtons(prev, cur, b.Radial, b.Back);
@@ -561,7 +575,27 @@ public sealed class Engine : IAsyncDisposable
         lastDictationClick = now;
         if (session.IsPasting) return;
         if (!session.IsReady) { session.Start(trigger); return; }
-        _ = OpenAndPasteByControllerAsync();
+        if (config.AutoSubmit && !router.FocusedFieldAvailable && LastDraft is { } prepared)
+            _ = SubmitByControllerAsync(prepared);
+        else _ = OpenAndPasteByControllerAsync();
+    }
+
+    async Task SubmitByControllerAsync(RoutedDraft draft)
+    {
+        string? error;
+        try { error = await session.SubmitPreparedAsync(draft, router.SubmissionContext).ConfigureAwait(false); }
+        catch (Exception failure) { error = "Submission stopped: " + failure.Message; }
+        if (error is null)
+        {
+            chat.Close();
+            Changed();
+            Log.Info("Final-click chat submit requested once; server delivery is unconfirmed.");
+        }
+        else
+        {
+            Log.Warn(error);
+            PublishCopiedDraft(draft with { Reason = error });
+        }
     }
 
     async Task OpenAndPasteByControllerAsync()

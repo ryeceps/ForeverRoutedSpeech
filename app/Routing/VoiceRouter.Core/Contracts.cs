@@ -11,7 +11,7 @@ public sealed record Channel(int Id, string Name, Destination Kind);
 public sealed record GameContext(int ProtocolVersion, string ClientBuild, uint Session, uint Heartbeat,
     GroupCategory Group, bool InGuild, IReadOnlyList<Channel> Channels,
     IReadOnlyDictionary<Destination, string> VerifiedPrefixes, int MessageLimit, bool LimitIsBytes, ChatInputState ChatInput = ChatInputState.Unknown,
-    TextTarget? FocusedText = null, Destination? ActiveDestination = null, int? ActiveChannelId = null, bool ActivePanelUnsupported = false);
+    TextTarget? FocusedText = null, Destination? ActiveDestination = null, int? ActiveChannelId = null, bool ActivePanelUnsupported = false, int? InputBytes = null, uint? InputChecksum = null);
 public sealed record Transcript(string Text, TranscriptionStatus Status);
 public sealed record RouteDecision(Destination? Destination, int? ChannelId, IReadOnlyDictionary<Destination, double> Scores,
     RouteReason Reason, string Explanation, string Message, string? ChannelName = null);

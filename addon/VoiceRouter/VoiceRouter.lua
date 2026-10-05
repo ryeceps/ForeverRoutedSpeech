@@ -161,7 +161,15 @@ local function emit()
     end
     local fieldKind, fieldName, fieldLimit, fieldUnits = focusedField(db)
     local audience, channelId = activeAudience(joined, chatInput)
-    local payload = table.concat({"3", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId}, "\t")
+    local inputBytes, inputChecksum = "-1", ""
+    local focus = safe(GetCurrentKeyBoardFocus)
+    if focus and (chatInput == "open" or fieldKind == "auctionhouse" or fieldKind == "search") then
+        local text = safe(focus.GetText, focus)
+        if type(text) == "string" and not (type(issecretvalue) == "function" and safe(issecretvalue, text)) then
+            inputBytes, inputChecksum = tostring(#text), tostring(checksum(text))
+        end
+    end
+    local payload = table.concat({"4", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId, inputBytes, inputChecksum}, "\t")
     if #payload > 494 then label:SetText("Voice Router: context exceeds strip capacity"); return end
     seq = (seq + 1) % 4294967296
     local data = "WVR1" .. string.char(#payload % 256, math.floor(#payload / 256)) .. pack32(session) .. pack32(seq) .. payload

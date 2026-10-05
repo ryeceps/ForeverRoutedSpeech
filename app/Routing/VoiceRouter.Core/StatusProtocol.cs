@@ -20,7 +20,8 @@ public static class StatusProtocol
         if (Checksum(frame[..(14 + length)]) != BinaryPrimitives.ReadUInt32LittleEndian(frame[(14 + length)..])) throw new FormatException("Checksum failed.");
         uint session = BinaryPrimitives.ReadUInt32LittleEndian(frame[6..]), sequence = BinaryPrimitives.ReadUInt32LittleEndian(frame[10..]);
         var fields = new UTF8Encoding(false, true).GetString(frame.Slice(14, length)).Split('\t');
-        bool activePanel=fields.Length==15 && fields[0]=="3";
+        bool echo=fields.Length==17 && fields[0]=="4";
+        bool activePanel=echo || fields.Length==15 && fields[0]=="3";
         bool extended=activePanel || fields.Length==13 && fields[0]=="2";
         if ((!extended && (fields.Length!=9 || fields[0]!="1")) || fields[1].Length==0) throw new FormatException("Invalid context fields.");
         var group = fields[2] switch { "solo" => GroupCategory.Solo, "party" => GroupCategory.Party, "raid" => GroupCategory.Raid, "instance" => GroupCategory.Instance, _ => throw new FormatException("Invalid group.") };
@@ -77,7 +78,14 @@ public static class StatusProtocol
             if(activeDestination is Destination.General or Destination.Trade or Destination.LookingForGroup or Destination.Custom && activeChannelId is null)
                 throw new FormatException("Missing active channel ID.");
         }
-        return new(activePanel ? 3 : extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget,activeDestination,activeChannelId,unsupported);
+        int? inputBytes=null;uint? inputChecksum=null;
+        if(echo && fields[15]!="-1")
+        {
+            if(!int.TryParse(fields[15],out int count) || count<0 || count>65536 || !uint.TryParse(fields[16],out uint hash)) throw new FormatException("Invalid field echo.");
+            inputBytes=count;inputChecksum=hash;
+        }
+        else if(echo && fields[16]!="") throw new FormatException("Invalid absent field echo.");
+        return new(echo ? 4 : activePanel ? 3 : extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget,activeDestination,activeChannelId,unsupported,inputBytes,inputChecksum);
     }
 }
 

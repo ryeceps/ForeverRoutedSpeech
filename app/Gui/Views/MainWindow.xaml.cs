@@ -175,7 +175,7 @@ public sealed partial class MainWindow : Window
         var cfg = engine.Config;
         if (engine.ButtonStyle != shownStyle) ShowBindings(); // a different kind of controller: its own icons
         var status = HomeStatus.Of(engine.StartError, engine.IsRunning, phase, engine.LoadedModel is not null, engine.IsLoadingModel,
-                                   engine.ControllerSlot >= 0, engine.ChatOpen, cfg.KeyboardShortcut);
+                                   engine.ControllerSlot >= 0, engine.ChatOpen, cfg.KeyboardShortcut, cfg.AutoSubmit);
         ShowStatus(status.Headline, status.Detail, status.Tone);
         ControllerText.Text = !engine.IsRunning ? "" : engine.ControllerSlot >= 0 ? engine.ControllerName ?? "Controller connected" : "No controller";
         ActiveSwitch.IsEnabled = recording == Recording.None;

@@ -29,6 +29,7 @@ public sealed partial class MainWindow
         updating = true;
         AutoUpdateSwitch.IsOn = engine!.Config.CheckForUpdates;
         OverlaySwitch.IsOn = engine.Config.ShowOverlay;
+        AutoSubmitSwitch.IsOn = engine.Config.AutoSubmit;
         StartupCard.Visibility = UpdateChecker.CanInstallHere ? Visibility.Visible : Visibility.Collapsed;
         StartupSwitch.IsOn = StartsWithWindows();
         updating = false;
@@ -97,6 +98,14 @@ public sealed partial class MainWindow
     }
 
     async void SoundSettings_Click(object sender, RoutedEventArgs e) => await Launcher.LaunchUriAsync(new Uri("ms-settings:sound"));
+
+    async void AutoSubmitSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (updating || engine is null) return;
+        try { await engine.UpdateConfigAsync(c => c with { AutoSubmit = AutoSubmitSwitch.IsOn }); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Log.Warn("Could not save auto-send setting: " + error.Message); }
+        UpdateOverlay();
+    }
 
     async void OverlaySwitch_Toggled(object sender, RoutedEventArgs e)
     {

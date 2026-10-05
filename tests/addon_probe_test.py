@@ -82,7 +82,7 @@ fields,_=decode(frame());assert fields[8]=="open"
 lua.execute("ChatEdit_GetActiveWindow=nil; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=="unknown"
 lua.execute("search={GetName=function() return 'AuctionSearch' end}; function GetCurrentKeyBoardFocus() return search end; handlers.OnUpdate(nil,.25)")
-fields,_=decode(frame());assert fields[0]=='3' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
+fields,_=decode(frame());assert fields[0]=='4' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
 lua.execute("SlashCmdList.VOICEROUTER('field chars 63'); handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[9]=='auctionhouse' and fields[11]=='63'
 lua.execute("function GetCurrentKeyBoardFocus() return {GetName=function() return 'OtherBox' end} end; handlers.OnUpdate(nil,.25)")
@@ -111,4 +111,8 @@ lua.execute("SlashCmdList.VOICEROUTER('preview on')")
 assert lua.globals().VoiceRouterStripDB.previewEnabled
 lua.execute("SlashCmdList.VOICEROUTER('preview off')")
 assert not lua.globals().VoiceRouterStripDB.previewEnabled
+lua.execute("GetCurrentKeyBoardFocus=function() return search end; search.GetText=function() return 'Hello é' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[15]=='8' and int(fields[16])==zlib.adler32('Hello é'.encode('utf-8')), 'input echo byte count and UTF8 checksum'
+lua.execute("issecretvalue=function() return true end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[15]=='-1' and fields[16]=='', 'secret field text never echoed'
 print("PASS: Lua 5.1 framing, checksum, capability gates, modern/legacy chat focus, heartbeat, renumbering, UTF-8 and API failures. Actual Forever client untested.")

@@ -179,6 +179,24 @@ public sealed class DraftRouter : IDisposable
         }
     }
 
+    public (string? Error, GameContext? Context) SubmissionContext(bool allowClosed)
+    {
+        Poll();
+        lock(gate)
+        {
+            var current = tracker.Current;
+            var original = copiedContext;
+            if (!WindowsCapture.IsGameForeground(Settings.Load())) return ("Return to the game before submitting.", current);
+            if (current is null || original is null) return ("Fresh game context is required.", current);
+            if (current.FocusedText is not null) return ("Auto-send is limited to chat. Search fields use paste and manual confirmation.", current);
+            if (current.ActivePanelUnsupported) return ("Unsupported chat audience.", current);
+            // The pasted command can intentionally change the audience. The final echo gate verifies the requested audience.
+            var expected = original with { ActiveDestination = current.ActiveDestination, ActiveChannelId = current.ActiveChannelId };
+            var check = allowClosed && current.ChatInput == ChatInputState.Closed ? current with { ChatInput = ChatInputState.Open } : current;
+            return (PasteContext.Validate(expected, check, tracker.IsFresh(clock.Elapsed)), current);
+        }
+    }
+
     public void Dispose()
     {
         timer.Dispose();

@@ -112,7 +112,9 @@ public static partial class Native
     }
 
     /// <summary>Requests Enter only to open a confirmed closed chat; never to submit text.</summary>
-    public static string? OpenChat(uint version, out bool attempted)
+    public static string? OpenChat(uint version, out bool attempted) => RequestEnter(version, out attempted);
+
+    static string? RequestEnter(uint version, out bool attempted)
     {
         attempted = false;
         if (CheckInput(version) is { } blocked) return blocked;
@@ -121,8 +123,11 @@ public static partial class Native
         if (SendInput(2, keys, Marshal.SizeOf<PasteInput>()) == 2) return null;
         PasteInput[] release = [new() { Type = 1, Key = 0x0D, Flags = 2 }];
         SendInput(1, release, Marshal.SizeOf<PasteInput>());
-        return "Windows did not accept the chat-open shortcut. Inspect the game; no retry was made.";
+        return "Windows did not accept the Enter shortcut. Inspect the game; no retry was made.";
     }
+
+    /// <summary>Requests Enter once after the caller confirms pasted text and audience.</summary>
+    public static string? SubmitChat(uint version, out bool attempted) => RequestEnter(version, out attempted);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     private static partial uint SendInput(uint count, [In] PasteInput[] inputs, int size);

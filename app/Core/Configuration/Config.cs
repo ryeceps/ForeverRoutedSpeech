@@ -25,6 +25,9 @@ public sealed record Config
     public string DictateChord { get; init; } = "RS";
 
     public string SendChord { get; init; } = "A";
+
+    /// <summary>Optional final-click chat submission; disabled by default.</summary>
+    public bool AutoSubmit { get; init; }
     public string BackChord { get; init; } = "B";
 
     /// <summary>The panel's Chat Channels and Tab Settings menus, which reuse A and B.</summary>

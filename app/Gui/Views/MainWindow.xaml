@@ -380,7 +380,7 @@
 
                             <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Dictate (controller)" Style="{StaticResource ItemTitle}" />
-                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Review, then press A in the game to send." />
+                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Click the left stick to cancel; otherwise review and press A to send (unless auto-send is enabled)." />
                             </StackPanel>
                             <Border x:Name="DictateCap" Grid.Row="1" Grid.Column="1" Style="{StaticResource Keycap}" />
                             <Button x:Name="DictateButton" Grid.Row="1" Grid.Column="2" Content="Change" Style="{StaticResource PanelButton}" Click="DictateButton_Click" />
@@ -423,6 +423,14 @@
                                 <Button Grid.Column="1" Content="Sound settings" Style="{StaticResource QuietButton}" Click="SoundSettings_Click" />
                             </Grid>
                             <TextBlock x:Name="MicMessage" FontSize="13" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+                        </StackPanel>
+                    </ContentControl>
+
+                    <ContentControl Style="{StaticResource Card}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Auto-send on final stick click" Style="{StaticResource FrameHeader}" />
+                            <ToggleSwitch x:Name="AutoSubmitSwitch" OnContent="On: final click opens, pastes, and sends" OffContent="Off: final click pastes; press A to send" Toggled="AutoSubmitSwitch_Toggled" />
+                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Text="Off by default. Requires the updated addon to confirm the pasted text and channel. Search fields still use manual confirmation. Nothing is sent when transcription finishes. Click the left stick to cancel before submission." />
                         </StackPanel>
                     </ContentControl>
 

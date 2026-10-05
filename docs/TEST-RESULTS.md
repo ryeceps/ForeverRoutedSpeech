@@ -1,5 +1,13 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 4: optional final-click auto-send
+
+Added an off-by-default Settings toggle. A deliberate final controller click can request chat opening, paste, and one submission after protocol-4 addon readback matches the text and intended channel. Transcription completion never sends. Search fields remain manual. Clipboard ownership, focused client, freshness/session, empty-field, echo and cancellation guards remain active. There is no retry after partial input.
+
+Left-stick click cancels recording, transcription, a ready draft, or pending submission. It is reserved from dictation/open-chat rebinding. Disabling auto-send also cancels pending submission. An already issued Enter cannot be undone.
+
+Core tests include the exact open/paste/submit sequence, old-addon rejection, existing text, partial paste, text mismatch, focus change, cancellation, readback timeout, Unicode, numbered audience, default-off behavior, and protocol-4 decoding. Lua mocks verify the new echo fields. Live auto-send is not yet tested; no Blizzard approval or server delivery is claimed. Earlier manual-only sections below describe previous builds.
+
 ## October 4: explicit numbered-channel speech
 
 Leading `In General, ...`, `In Trade, ...`, `In LFG, ...`, and named custom-channel instructions now select the current joined channel number and remove only the instruction. Leading `General, ...` and `Say in Trade ...` also work. References elsewhere in the message and negated instructions remain ordinary speech. Missing/stale context and unjoined destinations do not fall back to Say.
