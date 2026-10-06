@@ -6,6 +6,19 @@ namespace SpeakForever.Core.Tests;
 
 public class EdgeBridgeTests
 {
+    [Theory]
+    [InlineData(1200, 1200)]
+    [InlineData(1222, 1200)]
+    public void InsetBridgeRemainsVisibleAndInsideAutomaticSearch(int clientBottom, int monitorBottom)
+    {
+        int visibleBottom = Math.Min(clientBottom, monitorBottom);
+        int addonTop = BridgeGeometry.CaptureTop(clientBottom);
+        Assert.True(addonTop >= visibleBottom - BridgeGeometry.SearchHeight);
+        Assert.True(addonTop + StatusProtocol.Rows * 2 <= visibleBottom);
+        if (clientBottom == monitorBottom) Assert.Equal(addonTop, BridgeGeometry.CaptureTop(visibleBottom));
+        else Assert.True(clientBottom - StatusProtocol.Rows * 2 >= monitorBottom); // Old anchor was entirely offscreen.
+    }
+
     static byte[] Frame(string version = "5")
     {
         string payload = version + "\ttest\tparty\t1\t0\tbytes\t\t1,General,General\tclosed\tnone\t\t0\tchars\tnone\t\t-1\t";

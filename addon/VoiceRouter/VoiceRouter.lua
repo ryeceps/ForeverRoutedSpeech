@@ -1,11 +1,12 @@
 -- No SendChatMessage, input simulation, or live SavedVariables transport.
 local addon = CreateFrame("Frame", "VoiceRouterStatusStrip", UIParent)
 local columns, rows, cell = 512, 8, 2
--- Keep cells at one physical pixel even when the game UI is scaled.
+-- Keep two-pixel cells at physical scale even when the game UI is scaled.
 if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
 addon:SetSize(columns * cell, rows * cell)
--- Fixed physical bottom edge: no saved position, drag handle, or setup UI.
-addon:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+-- A maximized client's bottom can extend past the monitor (observed: 22px).
+-- Keep the whole signal inside the visible area, rather than below the screen.
+addon:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 32)
 addon:SetFrameStrata("TOOLTIP")
 addon:EnableMouse(false)
 local pixels, lastPixels = {}, {}

@@ -1,5 +1,11 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 5: bridge inset for offscreen client bounds
+
+Reported capture failures used a 1938 × 1222 client whose bottom extended beyond the visible monitor. An addon anchored at the actual client bottom could put all 16 signal rows offscreen; clamping the capture coordinate alone could not repair that. The addon now places the signal 32 physical pixels above its bottom anchor. Capture uses the matching inset and searches the bottom 96 pixels to allow for the difference between client and monitor bounds.
+
+Lua 5.1 addon checks passed; 197 core tests passed, including normal and 22-pixel clipped client placement. The local app was rebuilt and the installed addon updated. Live connection and controller paste still require testing in the game; no computer automation was used to operate the game.
+
 ## October 5: automatic edge bridge and detached-draft recovery
 
 The movable checkerboard is replaced by a dark bottom-edge bridge with two-pixel cells. Protocol 5 includes zone, subzone, city and resting-area context, while retaining protocols 1–4. City-map flags are used when available, with an English Classic capital fallback; resting alone does not imply a city. The normal Home workflow no longer shows a calibration button. Capture uses physical coordinates, clips off-screen window bounds to the monitor, searches the bottom edge at supported scaling pitches, and caches a decoded location. UI/display scale events update the addon scale.

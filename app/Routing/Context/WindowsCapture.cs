@@ -51,7 +51,7 @@ public static class WindowsCapture
                 // Borderless/maximized windows can report client pixels beyond the display.
                 // The rendered UI edge is at the visible monitor boundary, not those off-screen pixels.
                 var edge = settings with { StripX = Math.Max(origin.X, monitor.Monitor.Left) - origin.X,
-                    StripY = Math.Min(origin.Y + bounds.Bottom, monitor.Monitor.Bottom) - origin.Y - StatusProtocol.Rows*2,
+                    StripY = BridgeGeometry.CaptureTop(Math.Min(origin.Y + bounds.Bottom, monitor.Monitor.Bottom) - origin.Y),
                     CellPixels = 2, StripColumns = StatusProtocol.Columns };
                 var cached = edgeCapture;
                 if(cached is not null && cached.Width == bounds.Right && cached.Height == bounds.Bottom && cached.Left == edge.StripX && cached.Bottom == edge.StripY)
@@ -98,7 +98,7 @@ public static class WindowsCapture
     private static (Settings Settings, GameContext Context)? FindEdge(Settings settings, Rect bounds, Point origin, Rect monitor)
     {
         int left=Math.Max(origin.X,monitor.Left), right=Math.Min(origin.X+bounds.Right,monitor.Right);
-        int bottom=Math.Min(origin.Y+bounds.Bottom,monitor.Bottom), top=Math.Max(origin.Y,bottom-64);
+        int bottom=Math.Min(origin.Y+bounds.Bottom,monitor.Bottom), top=Math.Max(origin.Y,bottom-BridgeGeometry.SearchHeight);
         int width=right-left,height=bottom-top;
         if(width<StatusProtocol.Columns || height<StatusProtocol.Rows) return null;
         using var bitmap=new Bitmap(width,height,System.Drawing.Imaging.PixelFormat.Format24bppRgb);

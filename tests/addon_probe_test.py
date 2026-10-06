@@ -42,6 +42,7 @@ function print(...) end
 lua.execute((root/"addon/VoiceRouter/VoiceRouter.lua").read_text(encoding="utf-8"))
 lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter'); handlers.OnUpdate(nil,.25)")
 assert lua.globals().strip.width==1024 and lua.globals().strip.height==16, 'thin bridge with robust two-pixel cells'
+assert lua.globals().strip.point[1]=='BOTTOMLEFT' and lua.globals().strip.point[5]==32, 'bridge inset avoids offscreen maximized client edge'
 assert abs(lua.globals().strip.scale*.75-1)<1e-9, 'physical pixel scale compensation'
 lua.execute("UIParent.GetEffectiveScale=function() return .5 end; handlers.OnEvent(nil,'UI_SCALE_CHANGED')")
 assert lua.globals().strip.scale==2, 'physical scale refreshed after UI scale changes'
