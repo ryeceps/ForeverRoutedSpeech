@@ -38,7 +38,7 @@ public sealed class HomeStatusTests
     {
         var ready = Of(phase: DictationPhase.Ready, chatOpen: true);
         Assert.Equal("Ready to paste", ready.Headline);
-        Assert.Contains("open chat and paste", ready.Detail, StringComparison.Ordinal);
+        Assert.Contains("automatic paste", ready.Detail, StringComparison.Ordinal);
         Assert.Contains("{1}", ready.Detail, StringComparison.Ordinal);
         Assert.DoesNotContain("cancel", ready.Detail, StringComparison.Ordinal);
         Assert.Contains("press A", ready.Detail, StringComparison.Ordinal);

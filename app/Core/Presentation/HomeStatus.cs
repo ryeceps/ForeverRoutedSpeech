@@ -27,13 +27,13 @@ public sealed record HomeStatus(string Headline, string Detail, StatusTone Tone)
             : phase == DictationPhase.Listening ? new("Listening…", $"Pause when you're done, or press {trigger} to finish.", StatusTone.Busy)
             : phase == DictationPhase.Transcribing ? new("Transcribing", "Getting your words ready to paste.", StatusTone.Busy)
             : phase == DictationPhase.Ready ? new("Ready to paste", controller
-                ? autoSubmit ? "Click {1} again to open chat, paste, and send the ready draft." : "Click {1} again to open chat and paste. Review it, then press A in the game to send."
+                ? autoSubmit ? "Click {1} again to open chat, paste, and send the ready draft." : "Open native chat for automatic paste, then press A to send. In a focused field, click {1} to paste."
                 : $"Press Ctrl+V in the chat box, check it, then send it. Or press {trigger} to cancel.", StatusTone.Ready)
             : loadingModel && !hasModel ? new("Loading your voice model", "This takes a few seconds, and longer the first time on a graphics card.", StatusTone.Busy)
             : !hasModel ? new("Get a voice model", "Speak Forever needs one to understand you. Download it on the Voice model tab.", StatusTone.Problem)
             : !controller && keyboardShortcut is { } key ? new("Ready", $"Press {key} and speak, then paste it into chat with Ctrl+V.", StatusTone.Ready)
             : !controller ? new("Connect a controller", "Or set a keyboard shortcut on the Controls tab.", StatusTone.Idle)
             : chatOpen ? new("Chat open", autoSubmit ? "Click {1} to record, again to finish, then again when ready to paste and send." : "Click {1} to record, again to finish, then again when ready to paste. Press A to send.", StatusTone.Ready)
-            : new("Ready", autoSubmit ? "Keep moving: click {1} to record, again to finish, then again when ready to open chat, paste, and send." : "Keep moving: click {1} to record, again to finish, then again when ready to open chat and paste. Press A to send.", StatusTone.Ready);
+            : new("Ready", autoSubmit ? "Keep moving: click {1} to record, again to finish, then again when ready to open chat, paste, and send." : "Keep moving: click {1} to record and again to finish. When ready, open native chat for automatic paste, then press A to send.", StatusTone.Ready);
     }
 }

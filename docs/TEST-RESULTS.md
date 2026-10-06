@@ -1,5 +1,16 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 6: recent replies, public intent and nearby solo context
+
+The actual Lua event adapter now observes supported chat events, excluding self messages and custom channels. Bounded ephemeral name/topic cues expire after 45 seconds; generic solo replies use a 25-second single-audience window. Fixtures replay the user's Perilous/General example and test Trade/LFG/group/guild replies, ambiguity, explicit/manual precedence, selected chat, expiration, renumbering, zone changes, restricted payloads, search isolation and a 32-entry cap.
+
+Positive friendly-player interaction-range evidence from target/mouseover/available nameplates favors ordinary solo Say. Otherwise joined General is the requested solo default; missing proximity information does not prove players are absent. Groups still default Instance → Raid → Party. Proximity itself never overrides a recognized conversation reply.
+
+General, Trade and LFG fastText suggestions are now enabled normally through the text-only hint selector, with a minimum 0.80 score and 0.10 lead. Guild keeps address-language gating and 0.60. No classifier retraining occurred; the historical bootstrap report and failed population-size precision gate remain evidence, not a release toggle or a claim of validated 95% real-player precision. Tests cover score/margin/default-label rejection and actual native model General/Trade/LFG emissions.
+
+Lua tests pass, 235 core tests and 124 deterministic assertions pass, and 32 native model checks pass (mean 0.793 ms, max 2.024 ms; capture excluded). These are deterministic and local model checks, not live gameplay validation. No computer use or live game input was performed. Reload the matching addon to start observing new chat events; messages from before reload are not available.
+
+
 ## October 6: third-click game-close regression
 
 The retired v2 Windows control sequence held Ctrl, Shift and Alt while encoding metadata with F1–F16. The mandatory header contains hexadecimal digit 3, so its data alphabet emits F4 while Alt is held. That is a concrete system-shortcut hazard consistent with the reported game closure. Passive logs end with foreground-game failures after dictation; no new WoW crash report was found. No live input was executed, so the exact client close event remains unobserved.

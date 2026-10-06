@@ -60,7 +60,9 @@ using(var local=new DraftRouter(Path.Combine(package,"models")))
     Check(local.Prepare("Guildies who wants to join our guild event?").AddonHint=="i:guild","Text-only Guild address hint");
     Check(local.Prepare("I mentioned the guild yesterday").AddonHint=="default","Guild reference is not addressed audience");
     Check(local.Prepare("Hello friends").AddonHint=="default","Ordinary greeting never becomes Guild from friends keyword");
-    Check(local.Prepare("selling iron bars").AddonHint=="default","Unvalidated public inference remains disabled");
+    Check(local.Prepare("where do I learn skinning in this zone").AddonHint=="i:general","Actual General model hint is enabled by default");
+    Check(local.Prepare("selling iron bars").AddonHint=="i:trade","Actual Trade model hint is enabled by default");
+    Check(local.Prepare("LFM one healer for Deadmines").AddonHint=="i:lookingforgroup","Actual LFG model hint is enabled by default");
     Check(!local.Prepare(new string('é',101)).Ready,"Transport UTF8 limit");
 }
 using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context,()=>false))

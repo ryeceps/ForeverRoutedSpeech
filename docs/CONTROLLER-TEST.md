@@ -3,7 +3,7 @@
 Install the matching current app and addon, then reload WoW once. Public Preview 2 predates this protocol. Disable WoW's RS ping binding. Match the companion Open chat setting to the game's native chat-opening chord; default LB + RB + Down needs no change.
 
 1. With chat closed, click RS and speak while moving.
-2. Pause (default 1.5 seconds silence) or click RS again to finish. Wait for Ready.
+2. Click RS again to finish. If FinishOnPause is enabled, a 1.5-second pause also finishes. Wait for Ready.
 3. Use the native open-chat chord. The ready draft should paste automatically without another RS click. Check the native audience/header and text, then press A to send.
 4. Test selecting Chat from the native radial menu with a ready draft. Opening the menu must preserve it; selecting Chat requests paste.
 5. If chat/search is already focused when transcription completes, RS requests paste; completing transcription alone must not paste. Native chat opened before Ready must not receive a delayed unsolicited paste.
@@ -11,7 +11,7 @@ Install the matching current app and addon, then reload WoW once. Public Preview
 
 ## Routing cases
 
-- Solo ordinary speech → Say; party → Party; raid → Raid; instance → Instance.
+- Solo ordinary speech with a confirmed close friendly player → Say; otherwise joined General. Party → Party; raid → Raid; instance → Instance.
 - Change group before paste → current context.
 - In General, anyone need a tank? → currently joined General ID; strip instruction.
 - Ask in trade selling potions → joined Trade ID, including renumbering.
@@ -19,6 +19,9 @@ Install the matching current app and addon, then reload WoW once. Public Preview
 - Explicit unavailable General/Trade/Guild → refuse route; choose another destination.
 - In Officers, meeting tonight → joined custom channel, no inferred custom intent.
 - Mentioning guild or an item alone → ordinary current/group destination.
+- Recent speaker address or topical reply → that conversation’s current channel. Generic replies follow one recent audience when solo; competing audiences fall back. Your own messages are excluded.
+- Confirm nearby friendly player target/nameplate hints, NPC/self/hostile exclusion, expired chat cues and zone transitions.
+- Clear message intent → General, Trade or LFG model suggestion with score/margin gates; unjoined inferred routes fall back.
 - Previously selected Guild/numbered chat → retain unless overridden. Newly opened Say does not suppress group defaults.
 - Focused empty AH/search → original plain words, manual search confirmation; no chat opening.
 - Occupied field → preserve existing text when exact incoming body is found; never submit.

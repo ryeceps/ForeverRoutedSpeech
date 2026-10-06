@@ -108,6 +108,19 @@ public class AddonDeliveryTests
     [InlineData("Guildmates, hello",true)]
     public void GuildSuggestionRequiresAnAudienceAddress(string text,bool expected) => Assert.Equal(expected,Features.HasGuildAddress(text));
 
+    [Theory]
+    [InlineData(Destination.General)]
+    [InlineData(Destination.Trade)]
+    [InlineData(Destination.LookingForGroup)]
+    public void PublicHintsRequireStrongScoreAndMargin(Destination kind)
+    {
+        var policy=new InferencePolicy(false,1.01,.6,.1);
+        Assert.Equal("i:"+kind.ToString().ToLowerInvariant(),IntentHints.Select("clear request",[(kind,.9),(Destination.Default,.1)],policy));
+        Assert.Equal("default",IntentHints.Select("ambiguous",[(kind,.79),(Destination.Default,.21)],policy));
+        Assert.Equal("default",IntentHints.Select("close scores",[(kind,.85),(Destination.Default,.8)],policy));
+        Assert.Equal("default",IntentHints.Select("default winner",[(kind,.1),(Destination.Default,.9)],policy));
+    }
+
     [Fact]
     public async Task NativeOpeningSettlesBeforeFocusSnapshotAndNeverSends()
     {

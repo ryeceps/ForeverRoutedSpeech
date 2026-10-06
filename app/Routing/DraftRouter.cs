@@ -187,19 +187,11 @@ public sealed class DraftRouter : IDisposable
                         double.TryParse(parts[1],NumberStyles.Float,CultureInfo.InvariantCulture,out var score) && double.IsFinite(score) && score is >=0 and <=1)
                         scores.Add((destination,score));
                 }
-                var ranked=scores.OrderByDescending(s=>s.Score).ToArray();
-                if(ranked.Length>0)
-                {
-                    var best=ranked[0]; bool publicRoute=best.Kind is Destination.General or Destination.Trade or Destination.LookingForGroup;
-                    double threshold=publicRoute ? intentPolicy.PublicThreshold : intentPolicy.GuildThreshold;
-                    if((best.Kind==Destination.Guild && Features.HasGuildAddress(text) || publicRoute && intentPolicy.PublicValidated) && best.Score>=threshold &&
-                        best.Score-(ranked.Length>1 ? ranked[1].Score : 0)>=intentPolicy.Margin)
-                        hint="i:"+best.Kind.ToString().ToLowerInvariant();
-                }
+                hint=IntentHints.Select(text,scores,intentPolicy);
             }
         }
         return new(text,text,hint=="default" ? "Auto (addon)" : hint[2..]+" (suggested)",
-            "Addon resolves explicit instructions, current groups and joined channels on the final click. No screen capture or setup. Search fields receive plain text."+
+            "Addon resolves explicit instructions, recent replies, nearby players, groups and joined channels at paste. No screen capture or setup. Search fields receive plain text."+
             (modelError.Length>0 ? " Classifier unavailable; addon defaults remain available." : ""),timing.Elapsed.TotalMilliseconds) {AddonHint=hint};
     }
 

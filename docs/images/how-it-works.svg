@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1020" viewBox="0 0 960 1020" role="img" aria-labelledby="title desc">
   <title id="title">ForeverRoutedSpeech: speech to a native chat draft</title>
-  <desc id="desc">First right-stick click records. Pause or second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Opening chat with WoW’s native controller command automatically delivers a ready draft. An already focused search field uses a right-stick paste click. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses a manual A press to send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
+  <desc id="desc">First right-stick click records. Second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Opening chat with WoW’s native controller command automatically delivers a ready draft. An already focused search field uses a right-stick paste click. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses a manual A press to send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#94a3b8"/></marker>
     <style>
@@ -30,7 +30,7 @@
   <path d="M316 290 H338" class="line"/>
   <rect x="345" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
   <rect x="365" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
-  <text x="480" y="227" text-anchor="middle" class="click">PAUSE / FINISH</text>
+  <text x="480" y="227" text-anchor="middle" class="click">CLICK 2 · FINISH</text>
   <text x="365" y="280" class="head">Transcribe + preview</text>
   <text x="365" y="318" class="body">Whisper Turbo → text</text>
   <text x="365" y="350" class="small">fastText suggests an audience.</text>
@@ -49,8 +49,8 @@
   <rect x="40" y="465" width="880" height="170" rx="18" fill="#12303a" stroke="#2dd4bf"/>
   <text x="65" y="502" class="label">INSIDE WOW · CONTEXT READ AT DELIVERY</text>
   <text x="65" y="543" class="head">The addon chooses the actual destination</text>
-  <text x="65" y="576" class="body">Party · Raid · Instance · Guild · Joined channel IDs · Location · Focused field</text>
-  <text x="65" y="608" class="small">Explicit “in General” → model suggestion → current chat / group defaults → Say</text>
+  <text x="65" y="576" class="body">Recent replies · Nearby players · Groups · Guild · Joined channels · Focused field</text>
+  <text x="65" y="608" class="small">Explicit / manual → reply or model → selected chat / group / nearby Say / General</text>
 
   <path d="M480 643 V664 H255 V687" class="line"/>
   <path d="M480 664 H705 V687" class="line"/>

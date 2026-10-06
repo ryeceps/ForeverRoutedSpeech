@@ -15,6 +15,12 @@ lua.execute(r'''
 UIParent={}; frames={}; allFrames={}; SlashCmdList={}; notices={}; bindings={}; now=100
 LE_PARTY_CATEGORY_INSTANCE=2; grouped=false; raided=false; instanced=false; guilded=true; channels={1,'General - Zone',false,2,'Trade - City',false,7,'Officers',false}
 function GetTime() return now end
+function UnitGUID() return 'player-guid' end
+function UnitName() return 'Elevated Protein' end
+function UnitIsPlayer(unit) return unit=='target' and closePlayer or unit=='nameplate1' and platePlayer or false end
+function UnitCanAssist() return friendlyPlayer end
+function UnitIsUnit(unit) return unit=='target' and selfTarget or false end
+function CheckInteractDistance(unit) return inRange and (unit=='target' and closePlayer or unit=='nameplate1' and platePlayer) or false end
 function IsInGuild() return guilded end
 function IsInGroup(category) if category==2 then return instanced end; return grouped end
 function IsInRaid() return raided end
@@ -76,13 +82,14 @@ ChatFrameUtil={GetActiveWindow=function() return chat.shown and chat or nil end,
  UpdateHeader=function() end}
 function reset()
  grouped=false;raided=false;instanced=false;guilded=true;blockSend=false;focused=nil
+ closePlayer=true;platePlayer=false;friendlyPlayer=true;inRange=true;selfTarget=false;C_NamePlate=nil
  channels={1,'General - Zone',false,2,'Trade - City',false,7,'Officers',false}
  chat.text='';chat.shown=false;chat.chatType='SAY';chat.sticky='SAY';chat.channel=nil;chat:SetMaxBytes(255)
  search.text='';search.shown=true;search:SetMaxBytes(0);search:SetMaxLetters(63)
  sends=0;searchSends=0;sentText=nil
 end
 ''')
-for file in ('LocalRouter.lua','Inbox.lua'):
+for file in ('LocalRouter.lua','ReplyContext.lua','Inbox.lua'):
     lua.execute((root/'addon/VoiceRouter'/file).read_text(encoding='utf-8'))
 lua.execute("for _,f in ipairs(allFrames) do if f.kind=='Frame' then adapter=f end end; adapter.scripts.OnEvent(nil,'PLAYER_LOGIN')")
 counter=0
@@ -104,7 +111,7 @@ def paste(text,settle=True):
     lua.globals().raw=text
     lua.execute('focused:SetText(raw)')
     if settle: tick()
-def reset(): lua.execute("reset();adapter.scripts.OnEvent(nil,'PLAYER_LOGIN')")
+def reset(): lua.execute("reset();adapter.scripts.OnEvent(nil,'PLAYER_LOGIN');frames.ForeverRoutedSpeechReplyContext.scripts.OnEvent(nil,'PLAYER_ENTERING_WORLD')")
 def deliver(text,hint='default'):
     if not lua.eval('focused~=nil'): manual_chat() # player's native open action, not addon code
     arm(control(text,hint));paste(text)
@@ -129,7 +136,7 @@ if os.name=='nt':
         target=Path(folder)/'VoiceRouter';target.mkdir()
         for old in ('Bindings.xml','VoiceRouter.lua','Preview.lua'): (target/old).write_text('obsolete fixture')
         subprocess.run(['powershell','-NoProfile','-File',str(root/'scripts/Install-Addon.ps1'),'-AddOnsDirectory',folder,'-Interface','16001'],check=True,capture_output=True)
-        for name in ('Bindings.xml','Inbox.lua','LocalRouter.lua'): assert (target/name).read_bytes()==(root/'addon/VoiceRouter'/name).read_bytes()
+        for name in ('Bindings.xml','Inbox.lua','LocalRouter.lua','ReplyContext.lua'): assert (target/name).read_bytes()==(root/'addon/VoiceRouter'/name).read_bytes()
         assert not (target/'VoiceRouter.lua').exists() and not (target/'Preview.lua').exists()
 
 # Exact regression: no addon-originated native focus/open operations are available.
@@ -189,6 +196,81 @@ assert 'text ready' not in lua.globals().notices[len(lua.globals().notices)]
 reset();manual_chat();lua.execute('chat:SetMaxBytes(3)');arm(control('Hello'));paste('Hello')
 assert lua.globals().sends==0 and 'draft ready' not in lua.globals().notices[len(lua.globals().notices)]
 
+# Actual chat event payloads, not OCR or an invented companion context.
+def incoming(event,text,author='Perilous Karalonde',channel_id=1,channel_name='General',guid='other-guid'):
+    lua.globals().incoming_text=text; lua.globals().incoming_author=author
+    lua.globals().incoming_guid=guid; lua.globals().incoming_event=event
+    lua.globals().incoming_id=channel_id; lua.globals().incoming_channel=channel_name
+    lua.execute("frames.ForeverRoutedSpeechReplyContext.scripts.OnEvent(nil,incoming_event,incoming_text,incoming_author,'Common','','','',0,incoming_id,incoming_channel,0,1,incoming_guid)")
+
+reset();incoming('CHAT_MSG_CHANNEL','The water looks straight up awesome')
+incoming('CHAT_MSG_CHANNEL','Anyone for Twisted Hatred?',author='Toupets Thesneaky')
+incoming('CHAT_MSG_SAY','Why is this not General?',author='Elevated Protein',guid='player-guid')
+deliver("Wow dude that's super cool Perilous Caronlde");check('CHANNEL',"Wow dude that's super cool Perilous Caronlde",1)
+reset();incoming('CHAT_MSG_CHANNEL','Hello')
+deliver('Hey guys');check('SAY','Hey guys') # Traffic alone does not choose a public audience.
+reset();incoming('CHAT_MSG_CHANNEL','Hello');deliver('Yeah that is cool');check('CHANNEL','Yeah that is cool',1)
+reset();lua.execute('grouped=true');incoming('CHAT_MSG_CHANNEL','Hello');deliver('Yeah that is cool');check('PARTY','Yeah that is cool')
+reset();lua.execute('grouped=true');incoming('CHAT_MSG_CHANNEL','Hello');deliver('Thanks Perilous');check('CHANNEL','Thanks Perilous',1)
+reset();incoming('CHAT_MSG_CHANNEL','Water lighting looks amazing');incoming('CHAT_MSG_GUILD','Dinner tonight',author='Guildfriend')
+deliver('Yes water lighting is amazing');check('CHANNEL','Yes water lighting is amazing',1)
+reset();incoming('CHAT_MSG_CHANNEL','Hello');incoming('CHAT_MSG_GUILD','Hello',author='Guildfriend')
+deliver('Yeah that is cool');check('SAY','Yeah that is cool') # Competing audiences are ambiguous.
+for event,kind in [('CHAT_MSG_GUILD','GUILD'),('CHAT_MSG_PARTY','PARTY'),('CHAT_MSG_PARTY_LEADER','PARTY'),('CHAT_MSG_RAID','RAID'),('CHAT_MSG_RAID_LEADER','RAID'),('CHAT_MSG_INSTANCE_CHAT','INSTANCE_CHAT')]:
+    reset();lua.execute('grouped=true;raided=true;instanced=true');incoming(event,'Hello',author='Friendtank')
+    deliver('Thanks Friendtank');check(kind,'Thanks Friendtank')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');deliver('Tell everyone around me thanks Perilous');check('SAY','thanks Perilous')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');deliver('Thanks Perilous','m:guild');check('GUILD','Thanks Perilous')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');manual_chat();lua.execute("chat.chatType='GUILD'")
+deliver('Thanks Perilous');check('GUILD','Thanks Perilous') # Preserve a selected audience.
+reset();incoming('CHAT_MSG_CHANNEL','Hello');deliver('Thanks Perilous','i:guild');check('CHANNEL','Thanks Perilous',1)
+reset();incoming('CHAT_MSG_CHANNEL','Hello');deliver('I saw Perilous earlier');check('SAY','I saw Perilous earlier')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');tick(46);deliver('Thanks Perilous');check('SAY','Thanks Perilous')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');tick(26);deliver('Yeah that is cool');check('SAY','Yeah that is cool')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');lua.execute("channels={8,'General - Zone',false}")
+deliver('Thanks Perilous');check('CHANNEL','Thanks Perilous',8)
+reset();incoming('CHAT_MSG_CHANNEL','Hello');lua.execute('channels={}')
+deliver('Thanks Perilous');check('SAY','Thanks Perilous')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');lua.execute("channels={1,'General - Ironforge',false}")
+deliver('Thanks Perilous');check('SAY','Thanks Perilous') # New zone is a different conversation.
+reset();incoming('CHAT_MSG_CHANNEL','Hello',author='Elevated Protein',guid='player-guid')
+deliver('Yeah that is cool');check('SAY','Yeah that is cool')
+reset();incoming('CHAT_MSG_CHANNEL','Hello',channel_id=7,channel_name='Officers')
+deliver('Thanks Perilous');check('SAY','Thanks Perilous') # No inferred custom channels.
+reset();incoming('CHAT_MSG_CHANNEL','Hello');incoming('CHAT_MSG_CHANNEL','Hello',channel_id=2,channel_name='Trade')
+deliver('Thanks Perilous');check('SAY','Thanks Perilous') # Same speaker, two audiences.
+reset();incoming('CHAT_MSG_CHANNEL','Hello');lua.execute('focused=search')
+deliver('Thanks Perilous');assert lua.globals().search.text=='Thanks Perilous' and lua.globals().searchSends==0
+reset();lua.execute('function issecretvalue(value) return value==incoming_text end')
+incoming('CHAT_MSG_CHANNEL','Secret message');lua.execute('issecretvalue=nil')
+deliver('Thanks Perilous');check('SAY','Thanks Perilous')
+reset();incoming('CHAT_MSG_CHANNEL','Hello');lua.execute("frames.ForeverRoutedSpeechReplyContext.scripts.OnEvent(nil,'PLAYER_ENTERING_WORLD')")
+deliver('Thanks Perilous');check('SAY','Thanks Perilous')
+
+# Solo scope: nearby friendly players favor Say; otherwise joined General, never a fixed ID.
+reset();lua.execute('closePlayer=false');deliver('Hey guys');check('CHANNEL','Hey guys',1)
+reset();deliver('Hey guys');check('SAY','Hey guys')
+for flags in ('friendlyPlayer=false','selfTarget=true','inRange=false'):
+    reset();lua.execute(flags);deliver('Hey guys');check('CHANNEL','Hey guys',1)
+reset();lua.execute("closePlayer=false;platePlayer=true;C_NamePlate={GetNamePlates=function() return {{namePlateUnitToken='nameplate1'}} end}")
+deliver('Hey guys');check('SAY','Hey guys')
+reset();lua.execute('closePlayer=false;grouped=true');deliver('Hey guys');check('PARTY','Hey guys')
+reset();lua.execute("closePlayer=false;channels={6,'General - Zone',false}");deliver('Hey guys');check('CHANNEL','Hey guys',6)
+reset();lua.execute('closePlayer=false;channels={}');deliver('Hey guys');check('SAY','Hey guys')
+reset();lua.execute('closePlayer=false');deliver('Tell everyone around me hello');check('SAY','hello')
+reset();lua.execute('closePlayer=false');incoming('CHAT_MSG_SAY','Hello',author='Nearbyfriend')
+deliver('Thanks Nearbyfriend');check('SAY','Thanks Nearbyfriend')
+reset();incoming('CHAT_MSG_CHANNEL','Selling potions',channel_id=2,channel_name='Trade')
+deliver('Thanks Perilous');check('CHANNEL','Thanks Perilous',2)
+reset();lua.execute("channels={4,'Looking For Group - Zone',false}");incoming('CHAT_MSG_CHANNEL','Need a healer',channel_id=4,channel_name='Looking For Group')
+deliver('Thanks Perilous');check('CHANNEL','Thanks Perilous',4)
+# Buffer bounds and LFG spelling variants.
+reset();incoming('CHAT_MSG_CHANNEL','Old topic')
+for number in range(33): incoming('CHAT_MSG_CHANNEL','New topic',author=f'Freshspeaker{number}')
+deliver('Perilous hello');check('SAY','Perilous hello')
+reset();lua.execute("channels={4,'LookingForGroup',false}")
+incoming('CHAT_MSG_CHANNEL','Need healer',channel_id=4,channel_name='Looking For Group')
+deliver('Thanks Perilous');check('CHANNEL','Thanks Perilous',4)
 vectors=[]
 for index,(text,hint) in enumerate([('Hello 世界','default'),('In General, hey guys','default'),('Guildies hello','i:guild'),('Stormwind','m:channel:9999')],1):
     encoded=control(text,hint,index);decoded=lua.globals().VoiceRouterLocal.control(encoded)

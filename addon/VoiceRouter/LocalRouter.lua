@@ -40,6 +40,22 @@ end
 function R.matches(control,text)
     return R.validText(text) and #text==control.length and R.checksum(control.header.." "..text)==control.hash
 end
+-- Positive proximity evidence only; unknown/missing range APIs do not prove absence.
+function R.nearbyPlayer()
+    local units={"target","mouseover"}
+    if type(C_NamePlate)=="table" then
+        local plates=R.call(C_NamePlate.GetNamePlates)
+        if type(plates)=="table" then for _,plate in ipairs(plates) do
+            if #units>=42 then break end
+            if type(plate.namePlateUnitToken)=="string" then units[#units+1]=plate.namePlateUnitToken end
+        end end
+    end
+    for _,unit in ipairs(units) do
+        if R.call(UnitIsUnit,unit,"player")==false and R.call(UnitIsPlayer,unit)==true and
+            R.call(UnitCanAssist,"player",unit)==true and R.call(CheckInteractDistance,unit,3)==true then return true end
+    end
+    return false
+end
 function R.context()
     local guild,party,raid=R.call(IsInGuild),R.call(IsInGroup),R.call(IsInRaid)
     if type(guild)~="boolean" or type(party)~="boolean" or type(raid)~="boolean" then return nil,"Group/guild APIs unavailable." end
@@ -54,7 +70,7 @@ function R.context()
             local lower=name:lower()
             local kind=(lower=="general" or lower:match("^general%s*%-")) and "general" or
                 (lower=="trade" or lower:match("^trade%s*%-")) and "trade" or
-                (lower=="lookingforgroup" or lower=="looking for group") and "lookingforgroup" or "custom"
+                (lower=="lookingforgroup" or lower=="looking for group" or lower:match("^lookingforgroup%s*%-") or lower:match("^looking for group%s*%-")) and "lookingforgroup" or "custom"
             channels[#channels+1]={id=id,name=name,kind=kind}
         end
     end
@@ -68,7 +84,7 @@ function R.context()
         if info and type(info.flags)=="number" and type(flag)=="number" and flag>0 then city=math.floor(info.flags/flag)%2==1 end
     end
     return {guild=guild,party=party,raid=raid,instance=LE_PARTY_CATEGORY_INSTANCE and R.call(IsInGroup,LE_PARTY_CATEGORY_INSTANCE)==true,
-        channels=channels,zone=zone,subzone=R.call(GetSubZoneText) or "",city=city,resting=R.call(IsResting)==true}
+        channels=channels,nearbyPlayer=R.call(R.nearbyPlayer)==true,zone=zone,subzone=R.call(GetSubZoneText) or "",city=city,resting=R.call(IsResting)==true}
 end
 local names={{"everyone around me","say"},{"everyone nearby","say"},{"looking for group","lookingforgroup"},
     {"instance","instance"},{"general","general"},{"guild","guild"},{"party","party"},{"raid","raid"},{"trade","trade"},{"lfg","lookingforgroup"},{"say","say"}}
@@ -126,14 +142,19 @@ function R.resolve(packet,context,selected)
     if not kind then
         message=message or packet.text
         local manual=packet.hint:match("^m:(.+)$")
-        kind=manual or packet.hint:match("^i:(.+)$")
+        local replyKind,replyChannel,replyReason
+        if not manual and not (selected and selected.open and R.available(selected.kind,selected.channel,context)) and R.reply then
+            replyKind,replyChannel,replyReason=R.reply(packet.text,context)
+        end
+        kind=manual or replyKind or packet.hint:match("^i:(.+)$")
+        channel=replyChannel
         if kind and kind:match("^channel:") then
             local id=tonumber(kind:sub(9)); kind="custom"
             for _,c in ipairs(context.channels) do if c.id==id then channel=c end end
         elseif kind then
             for _,c in ipairs(context.channels) do if c.kind==kind then channel=c; break end end
         end
-        reason=manual and "manual destination" or "model suggestion"
+        reason=manual and "manual destination" or replyReason or "model suggestion"
         if kind and not manual and not R.available(kind,channel,context) then kind=nil end
     else
         if not channel then for _,c in ipairs(context.channels) do if c.kind==kind then channel=c; break end end end
@@ -143,8 +164,13 @@ function R.resolve(packet,context,selected)
         if selected and selected.open and R.available(selected.kind,selected.channel,context) then kind=selected.kind; channel=selected.channel
         elseif context.instance then kind="instance" elseif context.raid then kind="raid" elseif context.party then kind="party"
         elseif selected and R.available(selected.kind,selected.channel,context) then kind=selected.kind; channel=selected.channel
-        else kind="say" end
-        reason="current group / selected chat / Say default"
+        else
+            kind="say"
+            if not context.nearbyPlayer then
+                for _,joined in ipairs(context.channels) do if joined.kind=="general" then kind="general";channel=joined;break end end
+            end
+        end
+        reason=kind=="general" and "solo General default; no close friendly player confirmed" or "current group / selected chat / nearby Say default"
     end
     if not R.available(kind,channel,context) then return nil,"Requested destination is unavailable. Draft retained in the companion." end
     if not R.validText(message) then return nil,"Empty or invalid message after routing. Nothing was sent." end

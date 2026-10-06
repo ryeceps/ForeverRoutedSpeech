@@ -42,7 +42,7 @@ An occupied field is restored to its original text only if the exact checksummed
 
 ## Live resolution
 
-At delivery, Lua reads group/guild availability, joined channel IDs/names, zone/subzone, city-map/capital and resting status. Being in a city alone does not imply public intent. Explicit routing instructions and manual corrections outrank qualified model hints. Unavailable inferred hints fall back; unavailable explicit/manual requests refuse. A newly opened Say field allows ordinary speech to use Instance → Raid → Party → Say. An already selected supported Guild or numbered channel is retained unless overridden.
+At delivery, Lua reads group/guild availability, joined channel IDs/names, zone/subzone, city-map/capital and resting status. Being in a city alone does not imply public intent. Explicit routing instructions and manual corrections outrank everything. A supported selected audience suppresses reply guesses. Otherwise recent speaker/topic reply context takes priority over model hints. Qualified model hints can override a selected audience. Unavailable inferred hints fall back; unavailable explicit/manual requests refuse. A newly opened Say field allows ordinary speech to use Instance → Raid → Party, then nearby Say or joined General. General is the solo preference when no close friendly player is confirmed; Say is the final fallback if General is unavailable. An already selected supported Guild or numbered channel is retained unless overridden.
 
 General and Trade use current joined IDs, never fixed 1/2 assumptions. Custom channels support explicit names and manual numbers, not inferred intent. Search receives the complete original transcript without stripping audience phrases. The native chat header is the audience indicator; the companion preview remains a suggestion.
 
@@ -56,7 +56,7 @@ This is a one-way transport. The app reports a paste request, not verified recei
 
 `tests/addon_local_routing_test.py` executes shipped Lua with native focus/open methods forbidden. It covers live channel renumbering, group transitions, explicit/custom/manual routes, occupied/search fields, fragmented paste, UTF-8/checksum mismatch, expiry, cancellation, restricted controls and protected-action refusal. Installer upgrade checks remove legacy rendering files and retain the empty Bindings.xml compatibility stub.
 
-C# tests compare `AddonControl` to Lua-accepted fixtures and test native-open settling, cancellation before all input, guarded single paste and no Enter. Chat-panel tests distinguish explicit native opening from menu return and Send. Native smoke checks use the actual fastText model. Legacy pixel and `/frs1` packet fixtures are historical coverage, not current transport.
+C# tests compare `AddonControl` to Lua-accepted fixtures and test native-open settling, cancellation before all input, guarded single paste and no Enter. Chat-panel tests distinguish explicit native opening from menu return and Send. Native smoke checks use the actual fastText model. Reply fixtures replay native CHAT_MSG payloads, including the reported Perilous/General case, group traffic, Trade/LFG, ambiguity, TTL, self-message exclusion, nameplates and renumbering. Legacy pixel and `/frs1` packet fixtures are historical coverage, not current transport.
 
 ```powershell
 python tests/addon_local_routing_test.py
