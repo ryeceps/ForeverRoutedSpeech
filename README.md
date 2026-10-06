@@ -21,6 +21,19 @@ The addon creates no visible box. The companion's optional overlay remains confi
 
 ## How the whole stack works
 
+**Right stick → record → right stick → transcribe and preview → right stick → route and fill chat → send.**
+
+1. **Record:** the Windows companion listens to your microphone after the first right-stick click. Chat stays closed while you speak and move.
+2. **Transcribe:** the second click stops recording. Local Whisper Turbo turns your speech into text.
+3. **Suggest:** local fastText suggests an audience, and the companion shows an editable draft. A spoken instruction such as “in General” takes priority when the addon resolves it.
+4. **Deliver:** the third click hands the draft to an invisible addon inbox. There is no visible status strip, screen capture or calibration.
+5. **Route:** the addon checks your current party, raid, instance, guild, joined channels and focused text field inside WoW. It chooses the destination at that moment, so General and Trade use their current channel numbers.
+6. **Fill and send:** the addon opens and fills native chat. With auto-send off, press A to send. With auto-send enabled in Settings, the addon requests one send and closes an empty chat box afterward. An already focused empty Auction House/search field gets plain text and always requires manual confirmation.
+
+Install the matching app and addon, then reload WoW once. There are no channel, prefix, message-limit or capture setup steps. The native chat header shows the final audience; the companion preview shows a suggestion.
+
+### What happens behind the scenes
+
 - The **Windows app** watches the controller and microphone. Whisper Turbo turns audio into text; WoW vocabulary hints help recognition, but real pronunciation accuracy still needs speech testing.
 - **fastText** suggests an audience from message text alone. It no longer receives invented group/guild/channel context. Guild suggestions require address language and the tuned score/margin. Inferred public routing stays disabled because the authored bootstrap is too small to certify the production precision target.
 - The companion shows the original message and suggested audience, and copies human-readable text. It does not claim to know the game's final destination.
