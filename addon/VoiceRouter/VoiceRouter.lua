@@ -1,12 +1,12 @@
 -- No SendChatMessage, input simulation, or live SavedVariables transport.
 local addon = CreateFrame("Frame", "VoiceRouterStatusStrip", UIParent)
-local columns, rows, cell = 512, 8, 2
--- Keep two-pixel cells at physical scale even when the game UI is scaled.
+local columns, rows, cell = 128, 32, 1
+-- Compact physical-pixel signal; preserve the original high-contrast encoding.
 if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
 addon:SetSize(columns * cell, rows * cell)
 -- A maximized client's bottom can extend past the monitor (observed: 22px).
 -- Keep the whole signal inside the visible area, rather than below the screen.
-addon:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 32)
+addon:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 16, 32)
 addon:SetFrameStrata("TOOLTIP")
 addon:EnableMouse(false)
 local pixels, lastPixels = {}, {}
@@ -189,7 +189,7 @@ local function emit()
         local value = string.byte(data, math.floor((i-1) / 8) + 1) or 0
         local white = math.floor(value / (2 ^ ((i-1) % 8))) % 2
         if lastPixels[i] ~= white then
-            pixel:SetColorTexture(white * .25, white * .25, white * .25, 1)
+            pixel:SetColorTexture(white, white, white, 1)
             lastPixels[i] = white
         end
     end

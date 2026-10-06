@@ -50,9 +50,9 @@ public static class WindowsCapture
                 if (!GetMonitorInfo(MonitorFromWindow(window, 2), ref monitor)) throw new IOException("Cannot locate game display.");
                 // Borderless/maximized windows can report client pixels beyond the display.
                 // The rendered UI edge is at the visible monitor boundary, not those off-screen pixels.
-                var edge = settings with { StripX = Math.Max(origin.X, monitor.Monitor.Left) - origin.X,
+                var edge = settings with { StripX = Math.Max(origin.X, monitor.Monitor.Left) - origin.X + BridgeGeometry.LeftInset,
                     StripY = BridgeGeometry.CaptureTop(Math.Min(origin.Y + bounds.Bottom, monitor.Monitor.Bottom) - origin.Y),
-                    CellPixels = 2, StripColumns = StatusProtocol.Columns };
+                    CellPixels = 1, StripColumns = StatusProtocol.Columns };
                 var cached = edgeCapture;
                 if(cached is not null && cached.Width == bounds.Right && cached.Height == bounds.Bottom && cached.Left == edge.StripX && cached.Bottom == edge.StripY)
                 {
@@ -108,9 +108,10 @@ public static class WindowsCapture
         try { Marshal.Copy(area.Scan0,rgb,0,rgb.Length); } finally { bitmap.UnlockBits(area); }
         (byte R,byte G,byte B) Pixel(int x,int y) { int i=y*stride+x*3;return(rgb[i+2],rgb[i+1],rgb[i]); }
         byte[] magic="WVR1"u8.ToArray();
+        foreach(int columns in new[]{StatusProtocol.Columns,512})
         foreach(double pitch in new[]{1d,1.25,1.5,2,2.5,3,4})
-        for(int y=0;y<=height-Math.Ceiling(StatusProtocol.Rows*pitch);y++)
-        for(int x=0;x<=width-Math.Ceiling(StatusProtocol.Columns*pitch);x++)
+        for(int y=0;y<=height-Math.Ceiling(StatusProtocol.Capacity*8/columns*pitch);y++)
+        for(int x=0;x<=width-Math.Ceiling(columns*pitch);x++)
         {
             bool match=true;
             var first=Pixel(x+(int)(.5*pitch),y+(int)(.5*pitch)); bool dim=first.R<190;
@@ -123,8 +124,8 @@ public static class WindowsCapture
             if(!match) continue;
             try
             {
-                var context=PixelStrip.Decode(pitch,(dx,dy)=>Pixel(x+dx,y+dy));
-                return (settings with {StripX=left-origin.X+x,StripY=top-origin.Y+y,CellPixels=pitch},context);
+                var context=PixelStrip.Decode(pitch,(dx,dy)=>Pixel(x+dx,y+dy),columns);
+                return (settings with {StripX=left-origin.X+x,StripY=top-origin.Y+y,CellPixels=pitch,StripColumns=columns},context);
             }
             catch(FormatException) { }
         }
@@ -161,7 +162,7 @@ public static class WindowsCapture
         (byte R,byte G,byte B) Pixel(int x,int y) {int i=y*stride+x*3;return(rgb[i+2],rgb[i+1],rgb[i]);}
         byte[] magic="WVR1"u8.ToArray();
         var matches=new List<(Settings Settings,GameContext Context)>();
-        foreach(int columns in new[]{StatusProtocol.Columns,128})
+        foreach(int columns in new[]{StatusProtocol.Columns,512})
         foreach(int pitch in new[]{1,2,3,4})
         for(int y=0;y<=bitmap.Height-(StatusProtocol.Capacity*8/columns)*pitch;y++)
         for(int x=0;x<=bitmap.Width-columns*pitch;x++)

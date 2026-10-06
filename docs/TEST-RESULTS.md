@@ -1,5 +1,11 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 5: compact high-contrast bridge
+
+The user's subsequent test still failed: the dim decoder rejected RGB 26,26,26 at bit 31 and the third click remained blocked. The wide 1024 × 16 strip is replaced by a 128 × 32 physical-pixel signal using the original full black/white encoding. This uses one quarter of the previous area and retains the 512-byte capacity, protocol 5 context, checksum, and current routing. A 16-pixel left inset and 32-pixel bottom inset protect against clipped window edges. Automatic discovery recognizes compact and wide layouts; no user calibration is added.
+
+Verification: Lua addon wire/placement checks, 198 core tests (including compact decoding with a raised black level of 26), 124 deterministic routing assertions, and the local packaged native smoke checks. Local app rebuild and installed addon update completed. Actual client capture and third-click paste remain unverified without the user's game test. Public release archives have not been replaced.
+
 ## October 5: bridge inset for offscreen client bounds
 
 Reported capture failures used a 1938 × 1222 client whose bottom extended beyond the visible monitor. An addon anchored at the actual client bottom could put all 16 signal rows offscreen; clamping the capture coordinate alone could not repair that. The addon now places the signal 32 physical pixels above its bottom anchor. Capture uses the matching inset and searches the bottom 96 pixels to allow for the difference between client and monitor bounds.

@@ -14,9 +14,9 @@ public class EdgeBridgeTests
         int visibleBottom = Math.Min(clientBottom, monitorBottom);
         int addonTop = BridgeGeometry.CaptureTop(clientBottom);
         Assert.True(addonTop >= visibleBottom - BridgeGeometry.SearchHeight);
-        Assert.True(addonTop + StatusProtocol.Rows * 2 <= visibleBottom);
+        Assert.True(addonTop + StatusProtocol.Rows <= visibleBottom);
         if (clientBottom == monitorBottom) Assert.Equal(addonTop, BridgeGeometry.CaptureTop(visibleBottom));
-        else Assert.True(clientBottom - StatusProtocol.Rows * 2 >= monitorBottom); // Old anchor was entirely offscreen.
+        else Assert.True(clientBottom - 16 >= monitorBottom); // Previous wide strip was entirely offscreen.
     }
 
     static byte[] Frame(string version = "5")
@@ -51,6 +51,20 @@ public class EdgeBridgeTests
         Assert.Equal("The Commons", context.Subzone);
         Assert.True(context.InCity);
         Assert.True(context.Resting);
+    }
+
+    [Fact]
+    public void CompactBrightSignalAcceptsReportedRaisedBlackLevel()
+    {
+        var bytes = Frame();
+        var context = PixelStrip.Decode(1, (x,y) =>
+        {
+            int bit = y * 128 + x;
+            byte value = ((bytes[bit / 8] >> (bit % 8)) & 1) == 1 ? (byte)255 : (byte)26;
+            return (value,value,value);
+        });
+        Assert.Equal(GroupCategory.Party, context.Group);
+        Assert.Equal("Ironforge", context.Zone);
     }
 
     [Fact]

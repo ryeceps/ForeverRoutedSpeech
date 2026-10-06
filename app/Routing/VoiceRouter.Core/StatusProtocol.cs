@@ -5,7 +5,7 @@ namespace VoiceRouter.Core;
 
 public static class StatusProtocol
 {
-    public const int Columns = 512, Rows = 8, Capacity = Columns * Rows / 8;
+    public const int Columns = 128, Rows = 32, Capacity = Columns * Rows / 8;
     public static uint Checksum(ReadOnlySpan<byte> bytes)
     {
         uint a = 1, b = 0;
