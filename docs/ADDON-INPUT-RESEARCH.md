@@ -1,5 +1,15 @@
 # Chat input research — October 6, 2026
 
+## Confirmed function from the player's screenshot
+
+The screenshot reports `SetPreferredGamepadInteractTarget()` with `ADDON_ACTION_FORBIDDEN`, followed by an incorrect "say draft ready" notice. This identifies a gamepad focus/binding restriction, not a SendChatMessage refusal.
+
+The [Forever-specific edit-box source](https://github.com/Gethe/wow-ui-source/blob/a84e2b1b41d3d4137127c07e4da448aa3251d6f1/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua#L397) calls `self.chatFrame:SetGamepadFocus()` on edit focus gain and `ClearGamepadFocus()` on loss. Its [main action-bar source](https://github.com/Gethe/wow-ui-source/blob/a84e2b1b41d3d4137127c07e4da448aa3251d6f1/Interface/AddOns/Blizzard_GamepadActionBars/MainActionBarFrame.lua#L255) calls the named protected function while updating interaction icons. Our inbox steals/restores keyboard focus and opens native chat; these operations can enter that chain. The screenshot alone does not distinguish the first offending operation.
+
+A [first-hand Forever beta report](https://us.forums.blizzard.com/en/wow/t/wow-forever-gamepad-ui-bugs-build-160170170/2370253) describes the same function being blocked after addon chat cleanup and reports IM chat style as a workaround. This is a player report, not a Blizzard-confirmed fix or proof that changing chat style makes our whole bridge work. Ultimate Castbars' [maintainer changelog](https://www.curseforge.com/wow/addons/ultimate-castbars/files/9053859) likewise attributes this warning to clearing Blizzard edit-box focus and restricts its focus cleanup to its own controls.
+
+The follow-up removes the redundant native `SetFocus` during field fill and stops on a reported protected action instead of displaying "draft ready." A production-Lua regression simulates the forbidden event during chat opening and requires no fill, no send and no readiness notice. This is containment, not proof that automatic native chat opening is repaired. Replacing native focus/open manipulation with a player-owned game action remains the needed compatibility change; there is no claim that pcall bypasses protection.
+
 The useful distinction is preparing text versus submitting a message. A callback running after transcription/paste is not evidence of a current hardware-event context. The reported Blizzard disable-addon popup is a protected-action warning; it does not identify the exact failed operation or establish a TOS ruling by itself.
 
 ## Source comparisons

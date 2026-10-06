@@ -6,6 +6,7 @@ inbox:SetAutoFocus(false); inbox:SetMaxLetters(512)
 inbox:SetFontObject("GameFontNormal"); inbox:Show()
 if inbox.SetMaxBytes then inbox:SetMaxBytes(512) end
 local pending,busy,seen=nil,false,{}
+local blockedAction
 local seenOrder={}
 local function notify(text)
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then DEFAULT_CHAT_FRAME:AddMessage("ForeverRoutedSpeech: "..text) end
@@ -30,6 +31,7 @@ local function cancel()
     if previous and not restricted(previous) and R.call(previous.IsShown,previous) then R.call(previous.SetFocus,previous) end
 end
 local function prepare()
+    blockedAction=nil
     cancel()
     local current=focus()
     local blocked
@@ -67,7 +69,7 @@ local function setField(edit,text)
         if type(actual)=="string" and actual~="" and text:sub(1,#actual)==actual then R.call(edit.SetText,edit,"") end
         return nil,"The field did not accept the complete draft. Nothing was sent."
     end
-    R.call(edit.SetFocus,edit)
+    -- Never refocus a native field: Forever's focus callback enters protected gamepad code.
     if not R.call(edit.HasFocus,edit) then return nil,"The field did not accept focus. Select it manually before sending." end
     return true
 end
@@ -102,6 +104,7 @@ local function consume()
         else R.call(ChatEdit_OpenChat,"") end
         edit=activeChat()
     end
+    if blockedAction then notify("Draft preparation stopped: client blocked "..blockedAction..". Open chat using native controls."); return end
     if not edit or not R.call(edit.IsShown,edit) or (R.call(edit.GetText,edit) or "")~="" then notify("Chat could not open with an empty field. Paste stopped."); return end
     local chatType=types[decision.kind]
     local ok=pcall(function()
@@ -118,6 +121,7 @@ local function consume()
     if appliedType~=chatType or decision.channel and appliedId~=decision.channel.id then notify("Chat destination did not match. Nothing was sent."); return end
     local filled,fieldError=setField(edit,decision.message)
     if not filled then notify(fieldError); return end
+    if blockedAction then notify("Draft preparation stopped: client blocked "..blockedAction..". Use native controls."); return end
     local name=decision.channel and decision.channel.name.." (/"..decision.channel.id..")" or decision.kind
     -- Old packets may request send. Ignore that flag: only the player submits chat.
     notify(name.." draft ready. Press A to send.")
@@ -161,6 +165,7 @@ events:RegisterEvent("ADDON_ACTION_BLOCKED"); events:RegisterEvent("ADDON_ACTION
 events:SetScript("OnEvent",function(_,event,addonName,functionName)
     if event=="ADDON_ACTION_BLOCKED" or event=="ADDON_ACTION_FORBIDDEN" then
         if addonName=="VoiceRouter" or addonName=="ForeverRoutedSpeech" then
+            blockedAction=tostring(functionName)
             notify("Client blocked "..tostring(functionName).." ("..event.."). Use native controls; no automatic send or retry.")
         end
         return

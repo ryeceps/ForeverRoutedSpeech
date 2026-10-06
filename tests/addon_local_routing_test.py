@@ -189,6 +189,17 @@ lua.execute("allFrames[#allFrames].scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN',
 assert 'SendChatMessage()' in lua.globals().notices[len(lua.globals().notices)]
 reset();lua.execute('blockSend=true');deliver('Hello',send=True)
 assert lua.globals().sends==0 and lua.globals().chat.text=='Hello' and lua.globals().chat.shown
+reset()
+lua.execute('''function ChatFrameUtil.OpenChat()
+ chat:Show();chat:SetFocus()
+ allFrames[#allFrames].scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN','VoiceRouter','SetPreferredGamepadInteractTarget()')
+end''')
+before=len(lua.globals().notices)
+deliver('Blocked preparation')
+assert lua.globals().chat.text=='' and lua.globals().sends==0
+for n in range(before+1,len(lua.globals().notices)+1):
+    assert 'draft ready' not in lua.globals().notices[n], 'a protected-action refusal must never report readiness'
+lua.execute('function ChatFrameUtil.OpenChat() chat:Show();chat:SetFocus() end')
 reset();deliver('Hello 世界');check_chat('SAY','Hello 世界')
 reset();lua.execute('chat:SetMaxBytes(3)');deliver('Hello',send=True)
 assert lua.globals().sends==0 and lua.globals().chat.text==''
