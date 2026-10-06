@@ -7,15 +7,33 @@ using SpeakForever.Routing;
 using SpeakForever.Speech;
 using VoiceRouter.Core;
 
-if(args.Length==1 && args[0] is "--context-probe" or "--calibrate-context")
+if(args.Length==1 && args[0] is "--context-probe" or "--calibrate-context" or "--auto-context-probe" or "--watch-context")
 {
     try
     {
         var settings=VoiceRouter.App.Settings.Load();
+        if(args[0]=="--watch-context")
+        {
+            for(int attempt=0;attempt<120;attempt++)
+            {
+                if(VoiceRouter.App.WindowsCapture.IsGameForeground(settings))
+                {
+                    try
+                    {
+                        var observedContext=VoiceRouter.App.WindowsCapture.ReadAuto(settings);
+                        Console.WriteLine($"Live observedContext: protocol {observedContext.ProtocolVersion}, build {observedContext.ClientBuild}, heartbeat {observedContext.Heartbeat}, group {observedContext.Group}, guild {observedContext.InGuild}, chat {observedContext.ChatInput}, audience {observedContext.ActiveDestination}, channels {string.Join(",",observedContext.Channels.Select(c=>$"{c.Id}:{c.Kind}"))}.");
+                        return;
+                    }
+                    catch(Exception error) {if(attempt%10==0) Console.WriteLine("Foreground capture: "+error.Message);}
+                }
+                Thread.Sleep(500);
+            }
+            throw new IOException("No valid foreground game context observed within 60 seconds.");
+        }
         if(args[0]=="--calibrate-context") settings=VoiceRouter.App.WindowsCapture.Calibrate(settings);
-        var first=VoiceRouter.App.WindowsCapture.Read(settings);
+        var first=args[0]=="--auto-context-probe" ? VoiceRouter.App.WindowsCapture.ReadAuto(settings) : VoiceRouter.App.WindowsCapture.Read(settings);
         Thread.Sleep(350);
-        var second=VoiceRouter.App.WindowsCapture.Read(settings);
+        var second=args[0]=="--auto-context-probe" ? VoiceRouter.App.WindowsCapture.ReadAuto(settings) : VoiceRouter.App.WindowsCapture.Read(settings);
         Console.WriteLine($"Capture: ({settings.StripX},{settings.StripY}), pitch {settings.CellPixels}; build {second.ClientBuild}; heartbeat {first.Heartbeat} -> {second.Heartbeat}.");
         Console.WriteLine($"Prefixes: {string.Join(", ",second.VerifiedPrefixes.Select(p=>$"{p.Key}={p.Value}"))}; message limit: {second.MessageLimit}; chat input: {second.ChatInput}.");
         if(first.Session==second.Session && first.Heartbeat==second.Heartbeat) throw new IOException("Heartbeat is not advancing.");
@@ -86,6 +104,20 @@ using(var classicRouter=new DraftRouter(Path.Combine(package,"models"),()=>conte
     Check(!classicRouter.Prepare(new string('x',201)).Ready,"Classic draft cap rejects oversized text");
 }
 Check(ModelCatalog.All.Count==1 && ModelCatalog.All[0].Name=="Turbo","Only Turbo offered");
+missing=true;
+using(var recovering=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Waiting for addon") : context,()=>false,()=>true))
+{
+    Check(recovering.Prepare("Hello friends").Destination=="Say (standalone)","Startup without context retains a standalone draft");
+    Check(!recovering.CanRecoverDetachedDraft,"No recovery before fresh context");
+    missing=false;context=context with {Heartbeat=context.Heartbeat+1};recovering.RefreshContext();
+    Check(recovering.CanRecoverDetachedDraft,"Loaded addon automatically permits detached draft recovery");
+    Check(recovering.RecoverDetachedDraft().ClipboardText=="/i Hello friends","Final click can reroute recovered draft to actual group");
+    Check(recovering.CanRecoverDetachedDraft,"Clipboard failure can retry detached recovery");
+    recovering.CompleteDetachedRecovery();
+    Check(!recovering.CanRecoverDetachedDraft,"Successfully recopied draft no longer detached");
+    missing=true;recovering.RefreshContext();
+    Check(!recovering.Prepare("In general, hello").Ready,"Missing context does not make an explicit General request a Say draft");
+}
 Check(!new Config().CheckForUpdates && new Config().MaxSeconds==30 && !new Config().FinishOnPause,"Fork defaults");
 if(args.Length>1)
 {

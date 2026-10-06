@@ -41,11 +41,13 @@ function print(...) end
 ''')
 lua.execute((root/"addon/VoiceRouter/VoiceRouter.lua").read_text(encoding="utf-8"))
 lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter'); handlers.OnUpdate(nil,.25)")
-assert lua.globals().strip.width==128 and lua.globals().strip.height==32, 'compact strip dimensions'
+assert lua.globals().strip.width==1024 and lua.globals().strip.height==16, 'thin bridge with robust two-pixel cells'
 assert abs(lua.globals().strip.scale*.75-1)<1e-9, 'physical pixel scale compensation'
+lua.execute("UIParent.GetEffectiveScale=function() return .5 end; handlers.OnEvent(nil,'UI_SCALE_CHANGED')")
+assert lua.globals().strip.scale==2, 'physical scale refreshed after UI scale changes'
 
 def frame():
-    values=[int(lua.globals().pixels[i].r) for i in range(1,4097)]
+    values=[int(round(lua.globals().pixels[i].r / .25)) for i in range(1,4097)]
     return bytes(sum(values[n*8+k]<<k for k in range(8)) for n in range(512))
 def decode(data):
     assert data[:4]==b"WVR1"
@@ -55,10 +57,8 @@ def decode(data):
 before=lua.globals().drawCalls
 lua.execute("handlers.OnUpdate(nil,.25)")
 assert 0 < lua.globals().drawCalls-before < 128, 'only changed heartbeat/checksum pixels redraw'
-lua.execute("handlers.OnDragStop({StopMovingOrSizing=function() end,GetPoint=function() return 'TOPLEFT',UIParent,'TOPLEFT',50,-80 end})")
-assert lua.globals().VoiceRouterStripDB.x==50 and lua.globals().VoiceRouterStripDB.y==-80, 'drag persists position'
-lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter')")
-assert lua.globals().strip.point[4]==50 and lua.globals().strip.point[5]==-80, 'saved position restored on load'
+assert lua.globals().strip.point[1]=='BOTTOMLEFT', 'fixed bottom edge requires no saved capture coordinates'
+assert lua.globals().handlers.OnDragStop is None, 'bridge is not a draggable UI widget'
 fields,sequence=decode(frame());assert fields[6]=="" and fields[4]=="0", "unverified disabled"
 lua.execute("SlashCmdList.VOICEROUTER('rendered'); SlashCmdList.VOICEROUTER('verify say'); SlashCmdList.VOICEROUTER('verify party'); SlashCmdList.VOICEROUTER('verify custom'); SlashCmdList.VOICEROUTER('limit bytes 255'); handlers.OnUpdate(nil,.25)")
 data=frame();fields,advanced=decode(data)
@@ -82,7 +82,7 @@ fields,_=decode(frame());assert fields[8]=="open"
 lua.execute("ChatEdit_GetActiveWindow=nil; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=="unknown"
 lua.execute("search={GetName=function() return 'AuctionSearch' end}; function GetCurrentKeyBoardFocus() return search end; handlers.OnUpdate(nil,.25)")
-fields,_=decode(frame());assert fields[0]=='4' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
+fields,_=decode(frame());assert fields[0]=='5' and fields[9]=='unsupported' and fields[10]=='AuctionSearch'
 lua.execute("SlashCmdList.VOICEROUTER('field chars 63'); handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[9]=='auctionhouse' and fields[11]=='63'
 lua.execute("function GetCurrentKeyBoardFocus() return {GetName=function() return 'OtherBox' end} end; handlers.OnUpdate(nil,.25)")
@@ -127,3 +127,10 @@ fields,_=decode(frame());assert fields[15]=='8' and int(fields[16])==zlib.adler3
 lua.execute("issecretvalue=function() return true end; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[15]=='-1' and fields[16]=='', 'secret field text never echoed'
 print("PASS: Lua 5.1 framing, checksum, capability gates, modern/legacy chat focus, heartbeat, renumbering, UTF-8 and API failures. Actual Forever client untested.")
+
+lua.execute("GetZoneText=function() return 'Ironforge' end; GetSubZoneText=function() return 'The Commons' end; IsResting=function() return true end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[17]=='Ironforge' and fields[18]=='The Commons' and fields[19:21]==['1','1'], 'capital and resting context captured separately'
+lua.execute("GetZoneText=function() return 'Goldshire' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[19]=='?' and fields[20]=='1', 'resting in an inn does not imply city'
+lua.execute("Enum={UIMapFlag={IsCityMap=1048576}}; C_Map={GetBestMapForUnit=function() return 123 end, GetMapInfo=function() return {flags=1048576} end}; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[19]=='1', 'client city-map flag used where present'

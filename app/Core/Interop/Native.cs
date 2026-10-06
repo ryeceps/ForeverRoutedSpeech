@@ -23,7 +23,8 @@ public static partial class Native
     /// waiting to be pasted, not something to keep. Returns null on success or an error description;
     /// <paramref name="version"/> is the clipboard's sequence number after, to tell later whether it's still ours.
     /// </summary>
-    public static string? CopyText(string text, out uint version)
+    public static bool OwnsClipboard(uint version) => version != 0 && GetClipboardSequenceNumber() == version;
+    public static string? CopyText(string text, out uint version, uint? expectedVersion = null)
     {
         version = 0;
         // SetClipboardData needs an owner window; a message-only one is enough, and the text outlives it.
@@ -33,6 +34,8 @@ public static partial class Native
             if (!OpenClipboardPatiently(owner)) return "Couldn't copy it: another program is using the clipboard. Try again.";
             try
             {
+                if(expectedVersion is uint expected && !OwnsClipboard(expected))
+                    return "Clipboard changed. Draft retained; nothing was overwritten.";
                 EmptyClipboard();
                 Span<byte> no = stackalloc byte[sizeof(int)]; // a DWORD 0
                 no.Clear();

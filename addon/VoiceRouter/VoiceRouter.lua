@@ -1,23 +1,13 @@
 -- No SendChatMessage, input simulation, or live SavedVariables transport.
 local addon = CreateFrame("Frame", "VoiceRouterStatusStrip", UIParent)
-local columns, rows, cell = 128, 32, 1
+local columns, rows, cell = 512, 8, 2
 -- Keep cells at one physical pixel even when the game UI is scaled.
 if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
 addon:SetSize(columns * cell, rows * cell)
-addon:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -64)
+-- Fixed physical bottom edge: no saved position, drag handle, or setup UI.
+addon:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
 addon:SetFrameStrata("TOOLTIP")
-addon:EnableMouse(true)
-addon:SetMovable(true)
-addon:RegisterForDrag("LeftButton")
-addon:SetScript("OnDragStart", function(self) self:StartMoving() end)
-addon:SetClampedToScreen(true)
-addon:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    local point, _, relativePoint, x, y = self:GetPoint()
-    VoiceRouterStripDB = VoiceRouterStripDB or {}
-    VoiceRouterStripDB.point, VoiceRouterStripDB.relativePoint, VoiceRouterStripDB.x, VoiceRouterStripDB.y = point, relativePoint, x, y
-    print("Voice Router: strip position saved. Update capture.json after moving the strip.")
-end)
+addon:EnableMouse(false)
 local pixels, lastPixels = {}, {}
 for y = 0, rows - 1 do
     for x = 0, columns - 1 do
@@ -31,10 +21,8 @@ for y = 0, rows - 1 do
 end
 local label = addon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 label:SetPoint("BOTTOMLEFT", addon, "TOPLEFT", 0, 2)
-label:SetText("Voice Router | drag to move")
+label:SetText("")
 label:Hide()
-addon:SetScript("OnEnter", function() label:Show() end)
-addon:SetScript("OnLeave", function() label:Hide() end)
 local session = math.floor((GetTime() * 1000 + math.random(1, 1000000)) % 4294967296)
 local seq, elapsed = 0, 0
 local function safe(fn, ...)
@@ -176,7 +164,22 @@ local function emit()
             inputBytes, inputChecksum = tostring(#text), tostring(checksum(text))
         end
     end
-    local payload = table.concat({"4", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId, inputBytes, inputChecksum}, "\t")
+    local zone = safe(GetZoneText) or ""
+    local subzone = safe(GetSubZoneText) or ""
+    local resting = safe(IsResting)
+    local city = nil
+    if type(C_Map) == "table" then
+        local id = safe(C_Map.GetBestMapForUnit, "player")
+        local info = id and safe(C_Map.GetMapInfo, id)
+        local flag = type(Enum) == "table" and Enum.UIMapFlag and Enum.UIMapFlag.IsCityMap
+        if info and type(info.flags) == "number" and flag then city = math.floor(info.flags / flag) % 2 == 1 end
+    end
+    -- English Classic capital fallback when the client has no city-map flag.
+    local capitals = { ["Stormwind City"]=true, ["Ironforge"]=true, ["Orgrimmar"]=true,
+        ["Darnassus"]=true, ["Undercity"]=true, ["Thunder Bluff"]=true }
+    if capitals[zone] then city = true end
+    local function flag(value) return value == true and "1" or value == false and "0" or "?" end
+    local payload = table.concat({"5", number, group, guild and "1" or "0", tostring(limit), units, table.concat(verified, ";"), joined, chatInput, fieldKind, escape(fieldName), tostring(fieldLimit), fieldUnits, audience, channelId, inputBytes, inputChecksum, escape(zone), escape(subzone), flag(city), flag(resting)}, "\t")
     if #payload > 494 then label:SetText("Voice Router: context exceeds strip capacity"); return end
     seq = (seq + 1) % 4294967296
     local data = "WVR1" .. string.char(#payload % 256, math.floor(#payload / 256)) .. pack32(session) .. pack32(seq) .. payload
@@ -185,7 +188,7 @@ local function emit()
         local value = string.byte(data, math.floor((i-1) / 8) + 1) or 0
         local white = math.floor(value / (2 ^ ((i-1) % 8))) % 2
         if lastPixels[i] ~= white then
-            pixel:SetColorTexture(white, white, white, 1)
+            pixel:SetColorTexture(white * .25, white * .25, white * .25, 1)
             lastPixels[i] = white
         end
     end
@@ -196,15 +199,14 @@ addon:SetScript("OnUpdate", function(_, dt)
     if elapsed >= .25 then elapsed = elapsed % .25; emit() end
 end)
 addon:RegisterEvent("ADDON_LOADED")
-addon:SetScript("OnEvent", function(_, _, name)
-    if name ~= "VoiceRouter" then return end
-    if VoiceRouterStripDB then
-        local p = VoiceRouterStripDB
-        if type(p.point) == "string" and type(p.relativePoint) == "string" and type(p.x) == "number" and type(p.y) == "number" then
-            addon:ClearAllPoints()
-            addon:SetPoint(p.point, UIParent, p.relativePoint, p.x, p.y)
-        end
+addon:RegisterEvent("UI_SCALE_CHANGED")
+addon:RegisterEvent("DISPLAY_SIZE_CHANGED")
+addon:SetScript("OnEvent", function(_, event, name)
+    if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
+        if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
+        return
     end
+    if name ~= "VoiceRouter" then return end
     local number = build()
     if not VoiceRouterProbeDB or VoiceRouterProbeDB.build ~= number then
         VoiceRouterProbeDB = {build=number, destinations={}, limit=0, units="bytes", rendered=false}

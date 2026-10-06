@@ -5,7 +5,7 @@ namespace VoiceRouter.Core;
 
 public static class StatusProtocol
 {
-    public const int Columns = 128, Rows = 32, Capacity = Columns * Rows / 8;
+    public const int Columns = 512, Rows = 8, Capacity = Columns * Rows / 8;
     public static uint Checksum(ReadOnlySpan<byte> bytes)
     {
         uint a = 1, b = 0;
@@ -20,7 +20,8 @@ public static class StatusProtocol
         if (Checksum(frame[..(14 + length)]) != BinaryPrimitives.ReadUInt32LittleEndian(frame[(14 + length)..])) throw new FormatException("Checksum failed.");
         uint session = BinaryPrimitives.ReadUInt32LittleEndian(frame[6..]), sequence = BinaryPrimitives.ReadUInt32LittleEndian(frame[10..]);
         var fields = new UTF8Encoding(false, true).GetString(frame.Slice(14, length)).Split('\t');
-        bool echo=fields.Length==17 && fields[0]=="4";
+        bool location=fields.Length==21 && fields[0]=="5";
+        bool echo=location || fields.Length==17 && fields[0]=="4";
         bool activePanel=echo || fields.Length==15 && fields[0]=="3";
         bool extended=activePanel || fields.Length==13 && fields[0]=="2";
         if ((!extended && (fields.Length!=9 || fields[0]!="1")) || fields[1].Length==0) throw new FormatException("Invalid context fields.");
@@ -85,7 +86,10 @@ public static class StatusProtocol
             inputBytes=count;inputChecksum=hash;
         }
         else if(echo && fields[16]!="") throw new FormatException("Invalid absent field echo.");
-        return new(echo ? 4 : activePanel ? 3 : extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget,activeDestination,activeChannelId,unsupported,inputBytes,inputChecksum);
+        bool? Flag(string value) => value switch { "1" => true, "0" => false, "?" => null, _ => throw new FormatException("Invalid location flag.") };
+        return new(location ? 5 : echo ? 4 : activePanel ? 3 : extended ? 2 : 1, fields[1], session, sequence, group, fields[3] == "1", channels, prefixes, limit, fields[5] == "bytes", chatInput,textTarget,activeDestination,activeChannelId,unsupported,inputBytes,inputChecksum,
+            Zone: location ? Uri.UnescapeDataString(fields[17]) : null, Subzone: location ? Uri.UnescapeDataString(fields[18]) : null,
+            InCity: location ? Flag(fields[19]) : null, Resting: location ? Flag(fields[20]) : null);
     }
 }
 

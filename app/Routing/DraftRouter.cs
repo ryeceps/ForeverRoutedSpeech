@@ -31,6 +31,22 @@ public sealed class DraftRouter : IDisposable
     private string modelError="Classifier not loaded.";
     private bool disposed;
     private GameContext? copiedContext;
+    private string? detachedTranscript;
+    private string captureError = "Waiting for addon context.";
+    public bool CanRecoverDetachedDraft { get { lock(gate) return detachedTranscript is not null && tracker.IsFresh(clock.Elapsed); } }
+    public RoutedDraft RecoverDetachedDraft()
+    {
+        lock(gate)
+        {
+            if(detachedTranscript is null || !tracker.IsFresh(clock.Elapsed))
+                return new("", null, "Unconfirmed", "Waiting for addon context. The draft is retained.", 0);
+            var source=detachedTranscript;
+            var recovered=Prepare(source);
+            detachedTranscript=source; // Retry remains possible until the clipboard update succeeds.
+            return recovered;
+        }
+    }
+    public void CompleteDetachedRecovery() { lock(gate) detachedTranscript=null; }
     private readonly Func<GameContext> readContext;
     private readonly Func<bool> allowUnverifiedSayDrafts;
     private readonly Func<bool> useClassicDefaults;
@@ -75,9 +91,10 @@ public sealed class DraftRouter : IDisposable
             {
                 var context = readContext();
                 tracker.Accept(useClassicDefaults() ? ClassicChatDefaults.Apply(context) : context, clock.Elapsed);
+                captureError = "";
             }
             catch(Exception e) when(e is IOException or FormatException or ExternalException or ArgumentException or InvalidOperationException)
-            {tracker.Invalidate();}
+            {captureError=e.Message;tracker.Invalidate();}
         }
     }
     public RoutedDraft Prepare(string text)
@@ -86,6 +103,7 @@ public sealed class DraftRouter : IDisposable
         {
             ObjectDisposedException.ThrowIf(disposed,this);
             copiedContext=tracker.Current;
+            detachedTranscript=null;
             var timing=Stopwatch.StartNew();
             var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
             if(context?.FocusedText is TextTarget target)
@@ -97,6 +115,7 @@ public sealed class DraftRouter : IDisposable
             {
                 copiedContext=null; // standalone clipboard text must never acquire a game paste target later
                 var standalone=Router.StandaloneDraft(new(text,TranscriptionStatus.Success), useClassicDefaults() ? ClassicChatDefaults.DraftByteLimit : 4096);
+                if(standalone.Valid) detachedTranscript=text;
                 return new(standalone.Message,standalone.ClipboardText,standalone.Valid ? "Say (standalone)" : "Unconfirmed",
                     standalone.Explanation,timing.Elapsed.TotalMilliseconds);
             }
@@ -144,6 +163,7 @@ public sealed class DraftRouter : IDisposable
         lock(gate)
         {
             ObjectDisposedException.ThrowIf(disposed,this);
+            detachedTranscript=null;
             copiedContext=tracker.Current;
             var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
             if(fresh && context?.FocusedText is not null)
@@ -195,7 +215,7 @@ public sealed class DraftRouter : IDisposable
             var current = tracker.Current;
             var original = copiedContext;
             if (!WindowsCapture.IsGameForeground(Settings.Load())) return ("Return to the game before submitting.", current);
-            if (current is null || original is null) return ("Fresh game context is required.", current);
+            if (current is null || original is null) return ("Addon context is not connected. " + captureError, current);
             if (current.FocusedText is not null) return ("Auto-send is limited to chat. Search fields use paste and manual confirmation.", current);
             if (current.ActivePanelUnsupported) return ("Unsupported chat audience.", current);
             // The pasted command can intentionally change the audience. The final echo gate verifies the requested audience.

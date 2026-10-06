@@ -8,6 +8,7 @@ public sealed record Settings
     public int StripX { get; set; } = 16;
     public int StripY { get; set; } = 64;
     public double CellPixels { get; set; } = 1;
+    public int StripColumns { get; set; } = 128;
     public bool AllowUnverifiedSayDrafts { get; set; }
     public bool UseClassicChatDefaults { get; set; } = true;
     public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ForeverRoutedSpeech");

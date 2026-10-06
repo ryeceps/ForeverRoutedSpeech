@@ -6,6 +6,8 @@ Preview 2 implements RS start -> RS finish -> wait for Ready -> RS open/paste. B
 
 Current source automatically discovers the visible addon strip if its saved location stops decoding (one background search at most every 30 seconds). No prefix verification or channel configuration is required with the default Classic mode. Routing uses explicit instructions first, then supported model inference, an open chat audience, Instance/Raid/Party membership, the selected chat audience retained while solo, and finally Say. Joining General alone does not make every message public. The addon reads current joined-channel IDs; do not configure General as always `/1` or Trade as always `/2`.
 
+The latest source reads a fixed dark bottom-edge bridge automatically and handles physical display coordinates, clipped borderless-window bounds, and scaling. No calibration button or stored position is needed for the new addon. A freshly loaded addon reconnects on normal polling. A detached standalone draft can be rerouted from its retained transcript on the next deliberate click once fresh context arrives, without recording again or overwriting a clipboard changed by another program. Loading an updated addon still requires the game's normal UI reload/relog; the companion does not reload the game automatically.
+
 The app has launched on the development PC and the user has tested the basic chat flow. These are acceptance checks for additional clients and controller configurations, not a claim that every case has been verified. Do not disable security or elevate the app to bypass restrictions.
 
 - Starting with the stick held or reconnecting while held must not trigger recording or paste.

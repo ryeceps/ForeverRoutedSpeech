@@ -125,6 +125,21 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
 
     public RoutedDraft CopyEdited(string text) => CopyPrepared(() => route(text));
 
+    public RoutedDraft RecoverPrepared(Func<RoutedDraft> prepare)
+    {
+        lock(gate)
+        {
+            if(active is not null || pasting is not null || !ready || !Native.OwnsClipboard(copied))
+                return new("", null, "Unconfirmed", "Clipboard changed or the draft is no longer ready.", 0);
+            var draft = prepare();
+            if(!draft.Ready) return draft;
+            if(Native.CopyText(draft.ClipboardText!, out var next, copied) is { } error)
+                return draft with { ClipboardText = null, Reason = error };
+            copied = next;
+            return draft;
+        }
+    }
+
     public RoutedDraft CopyPrepared(Func<RoutedDraft> prepare)
     {
         lock (gate)

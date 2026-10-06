@@ -1,5 +1,13 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 5: automatic edge bridge and detached-draft recovery
+
+The movable checkerboard is replaced by a dark bottom-edge bridge with two-pixel cells. Protocol 5 includes zone, subzone, city and resting-area context, while retaining protocols 1–4. City-map flags are used when available, with an English Classic capital fallback; resting alone does not imply a city. The normal Home workflow no longer shows a calibration button. Capture uses physical coordinates, clips off-screen window bounds to the monitor, searches the bottom edge at supported scaling pitches, and caches a decoded location. UI/display scale events update the addon scale.
+
+A standalone draft created before addon connection can recover its original transcript and routing on a subsequent deliberate controller click. The clipboard is recopied only while it still belongs to the app; a failed clipboard update leaves recovery retryable. Explicit unavailable channels are not converted to Say. Model features remain unchanged pending location-aware training/calibration.
+
+195 core tests, 125 Lua-wire/routing assertions and the native classifier integration checks passed locally; the GUI package was rebuilt. The new edge palette/layout, old bright layout, location decoding, absent legacy location, corruption rejection, scale-event handling, and detached-context recovery are covered. Live third-click paste is **not verified**: computer control was stopped, then prohibited by the user. Foreground-only diagnostic watching saw no foreground game context during its observation window. The public Preview 2 ZIP has not been replaced with this local build.
+
 ## October 5: automatic group and selected-channel context
 
 Ordinary closed-chat speech now defaults to Instance → Raid → Party when available. Solo speech retains the selected supported chat audience even with the edit box closed, falling back to Say if no target is selected. Explicit instructions still win and resolve current joined channel IDs. The addon supports both modern chat methods and legacy attributes/last-active APIs; remembered whispers and departed channels do not become targets. The companion searches for a moved/missing strip in the background, at most once every 30 seconds, while rejecting invalid capture context.

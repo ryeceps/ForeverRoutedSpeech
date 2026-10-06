@@ -575,6 +575,14 @@ public sealed class Engine : IAsyncDisposable
         lastDictationClick = now;
         if (session.IsPasting) return;
         if (!session.IsReady) { session.Start(trigger); return; }
+        router.RefreshContext();
+        if(router.CanRecoverDetachedDraft)
+        {
+            var recovered = session.RecoverPrepared(router.RecoverDetachedDraft);
+            if(!recovered.Ready) { Log.Warn(recovered.Reason); return; }
+            router.CompleteDetachedRecovery();
+            PublishCopiedDraft(recovered);
+        }
         if (config.AutoSubmit && !router.FocusedFieldAvailable && LastDraft is { } prepared)
             _ = SubmitByControllerAsync(prepared);
         else _ = OpenAndPasteByControllerAsync();
