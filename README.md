@@ -19,7 +19,7 @@ For an already focused empty Auction House/search field, click the right stick w
 
 Left-stick click cancels before delivery. It cannot retract a sent message. Disable WoW's controller ping binding for right-stick click, otherwise each dictation click can ping.
 
-The addon creates no visible box. The companion's optional overlay remains configurable. Updating addon files requires one normal WoW UI reload or relog; there are no calibration or prefix/limit setup commands.
+The addon creates no visible box. The companion uses a small, static recording/transcription badge and expands only for the draft preview. Audio cues default off; the optional overlay can be disabled in Settings. Updating addon files requires one normal WoW UI reload or relog; there are no calibration or prefix/limit setup commands.
 
 ## How the whole stack works
 

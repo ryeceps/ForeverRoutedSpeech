@@ -126,7 +126,7 @@ public sealed record Config
     /// <summary>How far above the measured background noise counts as speech.</summary>
     public double SpeechThresholdDb { get; init; } = 10;
 
-    public bool Sounds { get; init; } = true;
+    public bool Sounds { get; init; }
 
     /// <summary>
     /// Shows "Listening" at the top of the screen, over the game, while you speak, then "Ready to

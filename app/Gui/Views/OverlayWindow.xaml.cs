@@ -34,6 +34,8 @@ public sealed partial class OverlayWindow : Window
     readonly IntPtr hwnd;
     readonly double[] recent = new double[3]; // the latest loudness first
     bool shown, followVoice;
+    bool compact;
+    double expandedWidth=double.NaN, expandedHeight=double.NaN;
 
     public OverlayWindow()
     {
@@ -69,22 +71,24 @@ public sealed partial class OverlayWindow : Window
     /// <param name="barSpeed">How fast the bars move: 1 while listening, faster while transcribing.</param>
     /// <param name="followVoice">The bars rise and fall with the mic (<see cref="ShowLevel"/>) instead of on their own.</param>
     public void Show(string headline, FrameworkElement? button = null, Action<RichTextBlock>? detail = null, string? glyph = null,
-        bool warning = false, double barSpeed = 1, bool followVoice = false)
+        bool warning = false, double barSpeed = 1, bool followVoice = false, bool compact = false)
     {
+        bool resize=this.compact!=compact;
+        SetAppearance(compact);
         Fill(headline, button, detail, glyph, warning);
 
         // Still while nothing's happening, and with Windows' animation effects off; the bars still show it's listening.
         Wave.Stop();
-        this.followVoice = followVoice && glyph is null && Settings.AnimationsEnabled;
+        this.followVoice = !compact && followVoice && glyph is null && Settings.AnimationsEnabled;
         if (this.followVoice) ShowLevel(0);
-        else if (glyph is null && Settings.AnimationsEnabled)
+        else if (!compact && glyph is null && Settings.AnimationsEnabled)
         {
             Wave.SpeedRatio = barSpeed;
             Wave.Begin();
         }
 
         // Placed only as it appears: moving or resizing it between states made it flash.
-        if (shown) return;
+        if (shown) { if(resize || compact) Place(); return; }
         Place();
         AppWindow.Show(activateWindow: false);
         shown = true;
@@ -96,6 +100,8 @@ public sealed partial class OverlayWindow : Window
     /// </summary>
     public void FitTo(params (string Headline, FrameworkElement? Button, Action<RichTextBlock>? Detail, string? Glyph)[] states)
     {
+        bool wasCompact=compact;
+        SetAppearance(false);
         Pill.Width = Pill.Height = double.NaN; // measured at their own size, not the last fit's
         double width = 0, height = 0;
         foreach (var (headline, button, detail, glyph) in states)
@@ -105,10 +111,27 @@ public sealed partial class OverlayWindow : Window
             width = Math.Max(width, Pill.DesiredSize.Width - Pill.Margin.Left - Pill.Margin.Right);
             height = Math.Max(height, Pill.DesiredSize.Height - Pill.Margin.Top - Pill.Margin.Bottom);
         }
-        Pill.Width = width;
-        Pill.Height = height;
-        Pill.CornerRadius = new CornerRadius(24);
+        expandedWidth = width;
+        expandedHeight = height;
+        SetAppearance(wasCompact);
         if (shown) Place(); // refitted while up: the window follows the pill
+    }
+
+    void SetAppearance(bool compact)
+    {
+        this.compact=compact;
+        Pill.Width=compact ? double.NaN : expandedWidth;
+        Pill.Height=compact ? double.NaN : expandedHeight;
+        Pill.MinHeight=compact ? 28 : 52;
+        Pill.Padding=compact ? new Thickness(8,4,10,4) : new Thickness(10,7,20,7);
+        Pill.CornerRadius=new CornerRadius(compact ? 14 : 24);
+        Pill.BorderThickness=new Thickness(compact ? 0 : 1.5);
+        Pill.Opacity=compact ? .85 : 1;
+        ContentRow.Spacing=compact ? 6 : 12;
+        Headline.FontSize=compact ? 12 : 17;
+        Headline.FontWeight=compact ? Microsoft.UI.Text.FontWeights.Normal : Microsoft.UI.Text.FontWeights.SemiBold;
+        Icon.FontSize=compact ? 13 : 22;
+        Icon.Margin=compact ? new Thickness(0) : new Thickness(8,0,0,0);
     }
 
     void Fill(string headline, FrameworkElement? button, Action<RichTextBlock>? detail, string? glyph, bool warning)

@@ -28,9 +28,9 @@ public sealed partial class MainWindow
         if (phase == DictationPhase.Listening)
         {
             tooLong = false; // a new dictation: the warning has done its job
-            Overlay().Show("Listening", FinishButton(controller), followVoice: true);
+            Overlay().Show("Recording", glyph: "\uE720", compact: true);
         }
-        else if (phase == DictationPhase.Transcribing) Overlay().Show("Transcribing…", barSpeed: 2.5);
+        else if (phase == DictationPhase.Transcribing) Overlay().Show("Transcribing", glyph: "\uE9CE", compact: true);
         else if (phase == DictationPhase.Ready)
             Overlay().Show(engine.LastDraft?.Destination ?? ReadyHeadline(tooLong), detail: ReadyDetail(controller, tooLong), glyph: tooLong ? WarningGlyph : PasteGlyph, warning: tooLong);
         else if (engine.LastDraft is { Ready: false } blocked)

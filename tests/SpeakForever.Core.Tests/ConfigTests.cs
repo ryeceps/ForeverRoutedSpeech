@@ -21,6 +21,7 @@ public sealed class ConfigTests
     {
         var cfg = await Load();
         Assert.Equal(new Config().SilenceMs, cfg.SilenceMs);
+        Assert.False(cfg.Sounds);
         Assert.True(File.Exists(AppPaths.Config));
         Assert.False(File.Exists(AppPaths.Config + ".tmp"));
     }
