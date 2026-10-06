@@ -1,5 +1,17 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 6: one-way inbox and addon-local context
+
+The default path no longer captures pixels or requires heartbeat/setup evidence. The app produces text-only intent hints and delivers a framed/checksummed packet to an invisible addon inbox on the final physical click. The addon resolves current group/guild, joined channel IDs and focused text targets locally. Legacy pixel renderer/preview files are removed from installation and packaging, and are retained only as historical test fixtures. The normal clipboard stays human-readable; no game context travels back to the app.
+
+221 core tests and 124 deterministic routing assertions passed before final packaging, including cross-language Lua-accepted packet vectors and prepare/paste/cancel workflow guards. The actual shipped Lua modules pass inbox/routing tests for groups changing at delivery, renumbered General/Trade, custom/manual destinations, unavailable explicit refusal, unavailable inferred fallback, occupied fields, corrupted metadata/text, Unicode/limits, unexpected truncation, duplicate IDs, cancellation/expiry and optional native send. Search never auto-submits. Native model checks now cover default addon mode with no context capture and text-only intent, including a guard against routing ordinary 'Hello friends' to Guild.
+
+The classifier was retrained using fixed paraphrase-family splits, text-only features and a direct Guild-address feature. The authored held-out sample emitted 5 Guild routes, all correct, across only 2 families; this is sparse bootstrap evidence, not a player accuracy claim. Public inference remains disabled despite 16/16 candidate held-out routes because the independent-family/emission gate is unmet. Explicit public destinations continue to work. Model checksum and policy were updated together.
+
+Local mocks/native checks do not establish Forever's invisible-edit-box focus, override shortcut or protected Enter-handler compatibility. No computer-use tools or live game input were used. The companion has no reverse acknowledgement channel and reports a delivery request, not confirmed routing/server delivery. Live three-click chat/search behavior requires a player test after the normal addon reload. The public Preview 2 archive still predates this protocol.
+
+Final Windows packaging succeeded. All 30 native routing smoke checks passed: mean 1.123 ms, maximum 16.731 ms, with game capture excluded. This measures routing only, not recognition, end-to-end latency or gameplay impact. The matching addon was installed in the Classic beta AddOns directory and the rebuilt companion restarted; the installed Inbox.lua hash matches the source. One normal game UI reload remains necessary to load the updated addon.
+
 ## October 5: normalized UI scale regression reproduced
 
 The earlier placement/palette fixes did not establish a live connection. The addon used `1 / UIParent:GetEffectiveScale()` as if one unscaled UI unit were one screen pixel. Blizzard's PixelUtil source converts pixels to UI units using `768 / physicalHeight`; the omitted factor made a nominal one-pixel cell 1.5625 pixels wide at 1200 pixels high. The fixed addon applies that factor through PixelUtil, with a GetPhysicalScreenSize fallback, and refreshes on display/UI changes and world entry.

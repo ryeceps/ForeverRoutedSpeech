@@ -53,6 +53,16 @@ var prefixes=new Dictionary<Destination,string>{{Destination.Say,"/say"},{Destin
 GameContext context=new(2,"test-client",1,1,GroupCategory.Party,true,[new(5,"Trade",Destination.Trade)],prefixes,255,true);
 bool missing=false; int checks=0;
 void Check(bool condition,string name) {if(!condition) throw new Exception(name); checks++;}
+using(var local=new DraftRouter(Path.Combine(package,"models")))
+{
+    Check(local.UsesAddonRouting && local.ClassifierLoaded,"Default app uses real classifier without capture bridge");
+    Check(local.Prepare("In General, hello friends").ClipboardText=="In General, hello friends","Explicit directive transported intact to addon");
+    Check(local.Prepare("Guildies who wants to join our guild event?").AddonHint=="i:guild","Text-only Guild address hint");
+    Check(local.Prepare("I mentioned the guild yesterday").AddonHint=="default","Guild reference is not addressed audience");
+    Check(local.Prepare("Hello friends").AddonHint=="default","Ordinary greeting never becomes Guild from friends keyword");
+    Check(local.Prepare("selling iron bars").AddonHint=="default","Unvalidated public inference remains disabled");
+    Check(!local.Prepare(new string('é',101)).Ready,"Transport UTF8 limit");
+}
 using(var router=new DraftRouter(Path.Combine(package,"models"),()=>missing ? throw new IOException("Missing game") : context,()=>false))
 {
     Check(router.ChatDraftRecordingAvailable,"Fresh chat context permits recording before opening chat");

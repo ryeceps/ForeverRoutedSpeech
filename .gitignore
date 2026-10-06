@@ -18,6 +18,7 @@ training/generated/
 models/*.bin
 !models/router.bin
 models/*.download
+models/*.vec
 *.user
 
 artifacts/

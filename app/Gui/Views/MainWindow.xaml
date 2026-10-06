@@ -209,15 +209,12 @@
                         <RichTextBlock x:Name="LastHeardHint" FontSize="14" Foreground="{StaticResource BodyBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="False" />
                         <TextBox x:Name="LastHeardText" FontSize="16" Foreground="{StaticResource BrightBrush}"
                                    TextWrapping="Wrap" AcceptsReturn="False" Visibility="Collapsed" />
-                        <Button x:Name="CalibrateContextButton" Content="Find game status strip" Visibility="Collapsed" Click="CalibrateContext_Click" HorizontalAlignment="Left"
-                                ToolTipService.ToolTip="Keep the game and its small status strip visible. Finds its position without changing game input." />
-                        <TextBlock x:Name="CalibrationResult" Style="{StaticResource Caption}" TextWrapping="Wrap" Visibility="Collapsed" />
                         <Expander x:Name="ManualRoutePanel" Header="Confirm destination" Visibility="Collapsed">
                             <StackPanel Spacing="6">
-                                <TextBox x:Name="ManualPrefix" Header="Chat destination" PlaceholderText="Verified command, such as /g or /2" />
-                                <NumberBox x:Name="ManualLimit" Header="Verified client message limit" Minimum="0" Maximum="10000" Value="0" />
-                                <CheckBox x:Name="ManualBytes" Content="The limit is measured in UTF-8 bytes" IsChecked="True" />
-                                <CheckBox x:Name="ConfirmDestination" Content="I checked this destination and message limit in the game" />
+                                <TextBox x:Name="ManualPrefix" Header="Chat destination" PlaceholderText="Command, such as /g or /2" />
+                                <NumberBox x:Name="ManualLimit" Visibility="Collapsed" Minimum="0" Maximum="10000" Value="200" />
+                                <CheckBox x:Name="ManualBytes" Visibility="Collapsed" IsChecked="True" />
+                                <CheckBox x:Name="ConfirmDestination" Content="Use this destination; the addon checks availability" />
                                 <Button Content="Confirm and copy" Click="ConfirmRoute_Click" />
                             </StackPanel>
                         </Expander>
@@ -430,7 +427,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Auto-send on final stick click" Style="{StaticResource FrameHeader}" />
                             <ToggleSwitch x:Name="AutoSubmitSwitch" OnContent="On: final click opens, pastes, and sends" OffContent="Off: final click pastes; press A to send" Toggled="AutoSubmitSwitch_Toggled" />
-                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Text="Off by default. Requires the updated addon to confirm the pasted text and channel. Search fields still use manual confirmation. Nothing is sent when transcription finishes. Click the left stick to cancel before submission." />
+                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Text="Off by default. The updated addon resolves the live audience and checks the complete draft before requesting chat send. Search fields always require manual confirmation. Nothing is sent when transcription finishes. Left-stick click cancels before delivery. No status strip or capture setup." />
                         </StackPanel>
                     </ContentControl>
 

@@ -33,7 +33,8 @@ def metrics(rows, scores, threshold, margin, audiences):
 
 def tune(rows,scores,audiences):
     best=(1.01,.2); best_recall=-1
-    for threshold in [.8,.85,.9,.92,.95,.97,.99]:
+    thresholds=[.8,.85,.9,.92,.95,.97,.99] if audiences==PUBLIC else [.6,.65,.7,.75,.8,.85,.9,.95,.99]
+    for threshold in thresholds:
         for margin in [.1,.2,.3,.4]:
             result=metrics(rows,scores,threshold,margin,audiences)
             minimum=5 if audiences==PUBLIC else 3
@@ -44,11 +45,11 @@ def tune(rows,scores,audiences):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument("--fasttext",type=Path,required=True);parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args();root=Path(__file__).resolve().parent;generated=root/"generated"
-    splits=prepare(root,generated);args.output.mkdir(parents=True,exist_ok=True)
+    splits=prepare(root,generated,intent_only=True);args.output.mkdir(parents=True,exist_ok=True)
     output=args.output/"router"
     # One thread and a fixed library version make the training run repeatable.
     subprocess.run([str(args.fasttext.resolve()),"supervised","-input",str(generated/"train.txt"),"-output",str(output),
-        "-epoch","100","-lr","0.3","-wordNgrams","2","-dim","32","-bucket","10000","-minCount","1","-thread","1","-loss","softmax"],check=True)
+        "-epoch","400","-lr","0.3","-wordNgrams","2","-dim","32","-bucket","10000","-minCount","1","-thread","1","-loss","softmax"],check=True)
     model=output.with_suffix(".bin")
     validation=predictions(args.fasttext.resolve(),model,splits["validation"],generated,"validation")
     public_threshold,margin=tune(splits["validation"],validation,PUBLIC)
@@ -58,7 +59,7 @@ def main():
     heldout=metrics(splits["test"],test,public_threshold,margin,PUBLIC)
     # Bootstrap examples cannot certify a production gate through repeated contexts.
     gate=all(r["emitted"]>=100 and r["independent_families"]>=30 and r["precision"]>=.95 for r in (val,heldout))
-    policy=dict(public_validated=gate,public_threshold=public_threshold if gate else 1.01,guild_threshold=guild_threshold,
+    policy=dict(feature_mode="text_only",public_validated=gate,public_threshold=public_threshold if gate else 1.01,guild_threshold=guild_threshold,
         margin=margin,model_sha256=hashlib.sha256(model.read_bytes()).hexdigest())
     (args.output/"router-policy.json").write_text(json.dumps(policy,indent=2),encoding="utf-8")
     report=dict(data="Authored bootstrap; scores are uncalibrated",split_sizes={k:len(v) for k,v in splits.items()},

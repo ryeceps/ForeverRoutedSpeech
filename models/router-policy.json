@@ -1,7 +1,8 @@
 {
+  "feature_mode": "text_only",
   "public_validated": false,
   "public_threshold": 1.01,
-  "guild_threshold": 0.8,
+  "guild_threshold": 0.6,
   "margin": 0.1,
-  "model_sha256": "3886070b8a860aa7fd121228f9266cfc4437b24c6e51a6e6b6cc19f4138bd845"
+  "model_sha256": "c8429fb7062ce14f5d12dcfe2a65a5d96f3bebe1c4f3b171ace5eb2ae19798d2"
 }

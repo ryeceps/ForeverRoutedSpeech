@@ -1,7 +1,6 @@
 ## Interface: @INTERFACE@
-## Title: Voice Router Compatibility Probe
-## Notes: Context probe and read-only draft preview. Never sends chat.
+## Title: ForeverRoutedSpeech
+## Notes: Resolves speech drafts using live local game context. No pixel bridge.
 ## Version: 0.2.0-preview.1
-## SavedVariables: VoiceRouterProbeDB, VoiceRouterStripDB
-VoiceRouter.lua
-Preview.lua
+LocalRouter.lua
+Inbox.lua

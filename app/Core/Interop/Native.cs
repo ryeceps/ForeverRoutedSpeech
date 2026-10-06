@@ -114,6 +114,22 @@ public static partial class Native
         return null;
     }
 
+    public static string? ValidateAddonDelivery(uint version) => CheckInput(version);
+    public static string? PrepareAddonInbox(uint version,out bool attempted) => AddonShortcut(version,0x79,out attempted);
+    public static string? CancelAddonInbox(uint version,out bool attempted) => AddonShortcut(version,0x78,out attempted);
+    static string? AddonShortcut(uint version,ushort key,out bool attempted)
+    {
+        attempted=false;
+        if(CheckInput(version) is { } blocked) return blocked;
+        PasteInput[] keys=[new(){Type=1,Key=0x11},new(){Type=1,Key=0x10},new(){Type=1,Key=key},
+            new(){Type=1,Key=key,Flags=2},new(){Type=1,Key=0x10,Flags=2},new(){Type=1,Key=0x11,Flags=2}];
+        attempted=true;
+        if(SendInput((uint)keys.Length,keys,Marshal.SizeOf<PasteInput>())==keys.Length) return null;
+        PasteInput[] release=[new(){Type=1,Key=key,Flags=2},new(){Type=1,Key=0x10,Flags=2},new(){Type=1,Key=0x11,Flags=2}];
+        SendInput((uint)release.Length,release,Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the addon shortcut. No input was retried.";
+    }
+
     /// <summary>Requests Enter only to open a confirmed closed chat; never to submit text.</summary>
     public static string? OpenChat(uint version, out bool attempted) => RequestEnter(version, out attempted);
 

@@ -1,68 +1,66 @@
 # ForeverRoutedSpeech
 
-**A fork of [samsbase/SpeakForever](https://github.com/samsbase/SpeakForever), adding local audience routing to controller speech-to-chat drafts.** SpeakForever supplies the Windows app, controller capture and speech foundation. ForeverRoutedSpeech adds a persistent fastText classifier, a game-context addon and guarded chat drafts, and simplifies speech recognition to **Whisper Turbo q5_0 only**. Original MIT attribution and Git history are preserved; this is an independent fork, not an official upstream or Blizzard release.
+A fork of [samsbase/SpeakForever](https://github.com/samsbase/SpeakForever), adding local audience routing to controller speech-to-chat. The upstream Windows/controller foundation, MIT attribution and Git history are preserved. This is an independent fork.
 
-## Download and preview status
+## Current build versus public download
 
-Visit **[the download site](https://ryeceps.github.io/ForeverRoutedSpeech/)** for the Windows app, ready-to-install addon ZIP, and installation steps. [Preview 2 (v0.2.0-preview.1)](https://github.com/ryeceps/ForeverRoutedSpeech/releases/tag/v0.2.0-preview.1) includes the current three-click flow, explicit channel routing, optional final-click auto-send, left-stick cancellation, chat-close handling and Classic defaults with a 200-byte app cap. It is an **unsigned experimental prerelease**. Local tests and player tests are documented; broader live-client validation and code signing remain outstanding. See [test results](docs/TEST-RESULTS.md).
+**Current source uses addon-side routing with no visible status strip, screen capture, calibration or context verification commands.** The public [Preview 2 download](https://github.com/ryeceps/ForeverRoutedSpeech/releases/tag/v0.2.0-preview.1) predates this redesign. Do not combine that older app with the new addon. The current local development build and installed addon are updated together; a new public archive has not yet been published.
 
-Extract the entire ZIP and run `Start.cmd`. Windows 10 2004 or newer is required. The package contains the app, .NET runtime, native libraries, Turbo model, routing classifier, addon and Microsoft's signed VC runtime prerequisite. The launcher installs that prerequisite only if needed; Windows may request elevation. No model picker, API key or separate model download is required. Normal speech processing stays local and offline. GPU inference uses Vulkan where available, with CPU fallback. Wait for Ready after initial model loading.
+The Windows x64 app uses Whisper **Turbo q5_0 only**, with Vulkan where available and CPU fallback. Speech and classification stay local; no API key or model picker. Normal operation is offline. Model/native dependencies and checksums are pinned. No audio or transcript history is retained by the app.
 
-## Controller workflow
+## Controller flow
 
-1. Keep chat closed while moving. Click the right stick to start recording.
-2. Speak, then click the right stick again to stop. Recording is capped at 30 seconds.
-3. Whisper Turbo transcribes the recording. fastText and the routing rules select an available audience. The companion previews the editable message, destination and routing reason, then copies a valid draft. You can keep moving while it works.
-4. Once the draft is ready, **click the right stick a third time to open chat and paste**. The app waits for addon-confirmed focus before requesting one Ctrl+V shortcut. If chat or a supported search field is already focused, it only pastes.
-5. **Press A in the game to send** (or the game's mapped confirmation button). The app stops after paste.
+1. Click the right stick to start recording. Keep moving with chat closed.
+2. Click it again to stop and transcribe. Wait for the editable draft preview.
+3. Click it when Ready to deliver the draft to the addon. The addon reads current context and opens the native chat draft, or fills an already focused empty text/search field.
+4. With auto-send **off**, press the game's A/send control to send chat. With **Auto-send on final stick click** enabled in Settings, the addon checks the routed draft and requests chat send once. Search confirmation is always manual.
 
-**Optional final-click auto-send:** in Settings, turn on **Auto-send on final stick click**. It is off by default. When enabled, the final click opens chat if needed, verifies an empty input, pastes once, waits for matching text and the selected channel, then requests Enter once and confirms chat closes. If new addon evidence shows an empty chat still open, it requests Escape once; it never clears remaining text or repeats sending. Nothing is sent merely because transcription finishes. Search fields continue to use paste and manual confirmation. **Left-stick click cancels recording, transcription, or the ready draft**, and stops a pending submission at its next cancellation check. It cannot undo a message after the submit request. Cancelling a ready draft clears the clipboard only if it still contains this app's copy. The game may also act on its LS binding; unbind that game action if it conflicts. The updated addon and a game UI reload are required; old/missing/stale context, existing text, mismatched readback, cancellation, or partial input stops submission. A shortcut request does not prove server delivery. Blizzard approval of this app is unverified.
+Left-stick click cancels before delivery. It cannot retract a sent message. Disable WoW's controller ping binding for right-stick click, otherwise each dictation click can ping.
 
-With auto-send off, Enter is used only to open confirmed closed chat; press A yourself after paste. The app does not select or clear existing text. Paste requires fresh matching addon context, focused WoW, and the unchanged copied clipboard. Failed or partial input is not replayed automatically. Missing or unknown context requires manual opening/pasting. Keyboard dictation retains its cancel-ready behavior. Unbind the game's right-stick click action so it does not fire alongside dictation. Microphone and recording bindings remain adjustable.
+The addon creates no visible box. The companion's optional overlay remains configurable. Updating addon files requires one normal WoW UI reload or relog; there are no calibration or prefix/limit setup commands.
 
-## How audience routing works
+## How the whole stack works
 
-- **Explicit instruction first:** `In General, ...`, `In Trade, ...`, `In LFG, ...`, `Tell guild ...`, `Say to everyone around me ...`, or `Ask in trade ...` selects that audience and removes only the recognized instruction. An unavailable explicit destination keeps the draft waiting for another selection.
-- **Confident inference next:** trained guild-address intent can choose Guild. Public-channel inference for General, Trade and LFG is disabled in this preview until held-out precision meets the target. Explicit joined public channels still work; merely mentioning an item or guild does not establish an audience.
-- **Otherwise use the active chat panel, then Say:** a known, available active destination is preserved, including a joined numbered/custom channel. Group membership alone no longer changes the audience. Explicit instructions and confident classifier inference still take priority in chat.
+- The **Windows app** watches the controller and microphone. Whisper Turbo turns audio into text; WoW vocabulary hints help recognition, but real pronunciation accuracy still needs speech testing.
+- **fastText** suggests an audience from message text alone. It no longer receives invented group/guild/channel context. Guild suggestions require address language and the tuned score/margin. Inferred public routing stays disabled because the authored bootstrap is too small to certify the production precision target.
+- The companion shows the original message and suggested audience, and copies human-readable text. It does not claim to know the game's final destination.
+- On the final physical click, the app temporarily copies a versioned draft packet and requests the addon's internal `Ctrl+Shift+F10` inbox shortcut, followed by one paste. The inbox is an invisible 1 × 1 EditBox, not a pixel signal. Clipboard ownership, foreground game process and modifier checks guard external input. Partial input is never retried.
+- The **addon** validates packet version, UTF-8 byte length, checksum, recent duplicate ID and expiry. It gathers party/raid/instance, guild, joined channel IDs/names and location locally at delivery time. No game context leaves WoW.
+- It removes only a recognized spoken routing instruction, resolves the destination, then fills native chat. The native chat header shows the actual final audience. Search fields receive the original plain transcript, without routing metadata or chat prefixes.
+- Optional auto-send invokes the native chat edit box's Enter handler once after checking destination, complete text and focus. Client rejection leaves a draft for manual sending. An empty chat edit box is closed; unsent text is never discarded. The companion cannot observe an acknowledgement or guarantee server delivery.
 
-Editing the message or destination updates the clipboard when the draft is valid. Silence, transcription errors, unknown fields, invalid context and oversized messages do not replace it. Explicit destinations require confirmation with missing or stale context; ordinary speech can use standalone Say; oversized drafts require editing rather than truncation. Default operation retains no audio or transcript history and does not retrain during play.
+The internal shortcut is assigned by the addon; users do not map an extra controller button. If the addon is missing, its binding API is unsupported, or the invisible inbox cannot take focus, delivery cannot be guaranteed. The app has no reverse acknowledgement channel. Native focus, shortcut and protected-send behavior must be checked on the Forever client; unit tests do not establish live compatibility.
 
-## Simple Classic chat defaults
+## Routing examples
 
-Classic-style chat defaults are enabled by default: `/say`, `/g`, `/p`, `/raid`, `/i`, and numbered joined channels. Chat drafts are capped at **200 UTF-8 bytes** (roughly 200 English characters; fewer for accented characters or emoji). Oversized text requires editing; it is never silently truncated. A smaller recorded client limit is honored conservatively. This is an app limit and a compatibility assumption, not a measured Forever message limit.
+| Speech / live situation | Final addon result |
+| --- | --- |
+| Solo: `Hey guys` | Say |
+| Party: `Hey guys` | Party |
+| Instance group / Raid | Instance first, then Raid, then Party |
+| `In General, anyone need a tank?` | Currently joined General ID, with the instruction removed |
+| `Ask in trade selling potions` | Currently joined Trade ID; never hardcoded to `/2` |
+| `Tell guild hello` | Guild if available; otherwise refuse |
+| `Tell everyone around me we need help` | Say even while grouped |
+| `In Officers, meeting tonight` | Joined custom channel by explicit name |
+| Auction House/search already focused | Plain transcript; never auto-submit |
 
-No `/wvr verify` or `/wvr limit` commands are required in this mode. The addon still supplies live guild/group availability, joined channels, focus, heartbeat and input readback. General is normally `/1` and Trade normally `/2`, but their live joined IDs take priority when renumbered. An unjoined destination remains unavailable. Missing/stale context never authorizes automated input. Set `UseClassicChatDefaults=false` in `capture.json` to return to the measured compatibility setup workflow.
+Explicit requests and manual corrections take priority, followed by qualified model suggestions, an already open supported chat audience, group defaults, a retained solo chat audience and Say. Merely mentioning an item or guild is insufficient. Unavailable explicit channels refuse delivery rather than silently changing the audience.
 
-## Standalone testing
+Messages are capped at **200 UTF-8 bytes**. The addon also checks the target edit box's exposed limits and confirms complete text after setting it. Oversized messages require editing; they are not truncated. Existing text, unsupported targets, damaged packets and unavailable APIs refuse delivery. No automatic retraining happens during play.
 
-Without game context, ordinary speech can preview and copy `/say <message>` as a standalone draft. No group/channel inference or controller paste is allowed in this state. The default 200-byte app draft cap is not a verified game message limit; legacy compatibility-skip mode uses 4096 bytes when Classic defaults are disabled. Explicit Guild/Trade/custom requests still require confirmation and are never silently redirected to Say. A previously observed stale search field remains blocked instead of being reinterpreted as chat. Manual paste remains available for testing.
+## Build and installation
 
-## Addon and game setup
-
-The companion cannot read live SavedVariables. The addon renders a framed, checksummed pixel status strip four times per second; the companion captures that region to read group/guild state, joined channel names and current numbers, verified chat prefixes/limits, and heartbeat. Context becomes stale after two seconds. The optional large addon preview repeats text already in a native field; it is hidden by default. `/wvr preview on` enables it and `/wvr preview off` hides it. The companion provides the pre-paste draft preview.
-
-Install the addon with `scripts/Install-Addon.ps1`, supplying the actual client's AddOns directory and Interface number. Classic chat defaults handle command prefixes and the 200-byte app cap without extra verification commands. The [compatibility probe instructions](docs/COMPATIBILITY.md) remain available for measured client compatibility. Live focus/context and joined-channel evidence are still required; unsupported destinations stay disabled.
-
-Capture defaults are game window `World of Warcraft`, client position `(16,64)` and a cell pitch of 1 physical pixel (a compact 128 × 32 strip). Drag the strip to move it; its position persists across reloads. Its label appears only while hovered. After moving it, use **Find game status strip** on Home to save the new capture position automatically. Calibration checks the visible game client once for a unique checksummed strip and an advancing heartbeat; it does not confirm chat capabilities. Normal polling captures only the calibrated region. You can also edit `StripX` and `StripY` in `%LOCALAPPDATA%/ForeverRoutedSpeech/capture.json`. Changed pixels alone are redrawn; heartbeat changes still produce a small visible pattern. Keep the strip unobscured during calibration. Window movement, multiple monitors, scaling, occlusion and minimization require live testing.
-
-**Auction House and other search boxes:** when fresh addon context identifies a registered, verified focused search field, dictation preserves the whole transcript as plain text with no chat prefix. Search text bypasses the chat classifier, so even words like “Tell guild” remain part of the query. Paste through your controller mapping. Unknown text fields are blocked; AH support still needs client verification.
-
-Blizzard approval for this particular integration has not been established. See [policy notes](docs/POLICY.md). Whispers, automatic sending, continuous listening and assistant answers are outside this preview.
-
-## Development and provenance
-
-Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream C# namespaces and some project filenames retain SpeakForever names. This fork uses its own app/settings identity. Upstream auto-updates are disabled.
+Use this fork's scripts, rather than the retained upstream build scripts:
 
 ```powershell
 ./scripts/Setup-Tools.ps1
-# CMake 3.31.6 must be available; Python 3.12 is used for training/Lua tests.
 ./scripts/Build.ps1
+./scripts/Install-Addon.ps1 -AddOnsDirectory 'C:/Program Files (x86)/World of Warcraft/_classic_beta_/Interface/AddOns' -Interface 16001
 ```
 
-Dependencies, NuGet graphs, native commits and model checksums are pinned. The normal build verifies downloads, builds native libraries, runs core/routing/classifier tests and packages one self-contained ZIP. `scripts/Train.ps1` retrains explicitly using held-out paraphrase families. See [controller tests](docs/CONTROLLER-TEST.md) and [measured component results](docs/TEST-RESULTS.md).
+Use the actual client's AddOns directory and Interface number; 16001 is the observed beta value, not a promise for future builds. The installer removes the legacy renderer, preview and bindings files. Reload WoW once after installation. The portable package includes the .NET runtime, native libraries, pinned Turbo model, classifier and VC runtime prerequisite; normal operation needs no separate model download.
 
-The original upstream `build.ps1`, installer, CLI and website are retained for provenance; use this fork's `scripts/Build.ps1`. CI compiles and tests source without automatically publishing installers. Prereleases are published separately with their validation status and checksums.
-For temporary clipboard-only testing, set `AllowUnverifiedSayDrafts` to `true` in `capture.json`. Unconfigured chat context then produces a Say draft or an explicitly requested joined numbered channel draft without claiming a verified prefix or game limit. General, Trade, LFG and custom channels use their current addon-reported number; no public inference runs in this temporary mode. Unjoined channels and other unverified audiences remain blocked. Third-click paste for these temporary drafts requires an advancing heartbeat, matching session/context, and initially focused Say chat reported by the addon; the pasted numbered prefix selects an explicitly requested joined channel. The third click opens chat if it is closed, waits for addon-confirmed focus, and pastes once. Press A in the game to send; the app never sends. Missing/stale context still permits manual paste only; search-field verification still applies. The default is `false`.
+[Stack and tests](docs/ADDON-ROUTING.md) explain the implementation and its limits. [Controller acceptance checks](docs/CONTROLLER-TEST.md) cover live testing. [Test results](docs/TEST-RESULTS.md) distinguish mock/native tests from actual client evidence. [Policy notes](docs/POLICY.md) retain the prior review; this redesign is not a claim of Blizzard approval.
 
-The Whisper prompt includes WoW shorthand, common materials, cities and dungeons. It improves the vocabulary hints supplied to Turbo without rewriting the transcript or changing the model. Recognition improvement on real WoW speech remains unmeasured. See [language training](training/README.md) for the expanded classifier corpus and candidate evaluation; the latest candidate was not activated because its Guild precision regressed.
+Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream C# namespaces/project names remain where useful. Upstream auto-updates are disabled. This source is experimental and unsigned; the current live shortcut/inbox/send path has not been verified by computer automation.

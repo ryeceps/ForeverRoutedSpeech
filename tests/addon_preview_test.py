@@ -31,7 +31,7 @@ function GetCurrentKeyBoardFocus() return focus end
 function SendChatMessage() error('Preview must never send') end
 function CopyToClipboard() error('Preview must never change clipboard') end
 ''')
-lua.execute((root / 'addon/VoiceRouter/Preview.lua').read_text(encoding='utf-8'))
+lua.execute((root / 'tests/fixtures/legacy-preview.lua').read_text(encoding='utf-8'))
 lua.execute("frames[2].OnUpdate(nil,.25)")
 assert not lua.globals().frames[1].visible
 lua.execute("VoiceRouter_OpenDraft()")

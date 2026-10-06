@@ -1,0 +1,23 @@
+[
+  {
+    "text": "Hello 世界",
+    "hint": "default",
+    "send": false,
+    "nonce": "00000000000000000000000000000001",
+    "packet": "/frs1 00000000000000000000000000000001 default 0 12 e3351213 Hello 世界"
+  },
+  {
+    "text": "In General, hey guys",
+    "hint": "default",
+    "send": true,
+    "nonce": "00000000000000000000000000000002",
+    "packet": "/frs1 00000000000000000000000000000002 default 1 20 649512d5 In General, hey guys"
+  },
+  {
+    "text": "Guildies hello",
+    "hint": "i:guild",
+    "send": false,
+    "nonce": "00000000000000000000000000000003",
+    "packet": "/frs1 00000000000000000000000000000003 i:guild 0 14 fb411106 Guildies hello"
+  }
+]

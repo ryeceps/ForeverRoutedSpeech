@@ -32,6 +32,48 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     /// <summary>Text is on the clipboard, waiting to be pasted.</summary>
     public bool IsReady => ready;
 
+    public async Task<string?> DeliverToAddonAsync(RoutedDraft draft)
+    {
+        CancellationTokenSource cts;
+        uint version;
+        lock(gate)
+        {
+            if(active is not null || pasting is not null || !ready || !draft.Ready) return "Wait for a ready draft.";
+            pasting=cts=new(); version=copied; ready=false;
+        }
+        AddonDeliveryResult result=new("Delivery stopped.",false);
+        bool encoded=false;
+        try
+        {
+            var packet=AddonEnvelope.Encode(draft.Message,draft.AddonHint,settings().AutoSubmit,Guid.NewGuid().ToString("N"));
+            if(Native.CopyText(packet,out var next,version) is { } copyError) return copyError;
+            version=next; encoded=true;
+            (string? Error,bool Attempted) Input(AddonInput action)
+            {
+                bool attempted;
+                string? error=action switch
+                {
+                    AddonInput.PrepareInbox=>Native.PrepareAddonInbox(version,out attempted),
+                    AddonInput.CancelInbox=>Native.CancelAddonInbox(version,out attempted),
+                    _=>Native.PasteCopied(version,out attempted)
+                };
+                return (error,attempted);
+            }
+            result=await AddonDeliveryWorkflow.RunAsync(()=>Native.ValidateAddonDelivery(version),Input,cts.Token).ConfigureAwait(false);
+            return result.Error;
+        }
+        finally
+        {
+            lock(gate)
+            {
+                // Restore the human-readable clipboard only while it is still ours.
+                if(encoded && Native.OwnsClipboard(version)) Native.CopyText(draft.ClipboardText!,out copied,version);
+                ready=!result.Attempted && !cts.IsCancellationRequested;
+                pasting=null; phase(ready ? DictationPhase.Ready : DictationPhase.Idle); cts.Dispose();
+            }
+        }
+    }
+
     /// <summary>A deliberate click opens chat if needed and pastes once; sending stays manual.</summary>
     public async Task<string?> OpenAndPastePreparedAsync(Func<bool, bool, (string? Error, GameContext? Context)> inspect)
     {

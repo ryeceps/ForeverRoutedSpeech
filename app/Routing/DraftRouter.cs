@@ -11,6 +11,7 @@ namespace SpeakForever.Routing;
 
 public sealed record RoutedDraft(string Message,string? ClipboardText,string Destination,string Reason,double RoutingMilliseconds)
 {
+    public string AddonHint { get; init; } = "default";
     public bool Ready => ClipboardText is not null;
 }
 
@@ -25,7 +26,10 @@ public sealed class DraftRouter : IDisposable
     private readonly object gate=new();
     private readonly ContextTracker tracker=new();
     private readonly Stopwatch clock=Stopwatch.StartNew();
-    private readonly System.Threading.Timer timer;
+    private readonly System.Threading.Timer? timer;
+    public bool UsesAddonRouting { get; }
+    private bool textOnlyFeatures;
+    private InferencePolicy intentPolicy = new();
     private nint handle;
     private Router router=new(new());
     private string modelError="Classifier not loaded.";
@@ -52,6 +56,7 @@ public sealed class DraftRouter : IDisposable
     private readonly Func<bool> useClassicDefaults;
     public DraftRouter(string folder, Func<GameContext>? contextReader = null, Func<bool>? allowUnverifiedSayDrafts = null, Func<bool>? useClassicDefaults = null)
     {
+        UsesAddonRouting = contextReader is null;
         readContext = contextReader ?? (() => WindowsCapture.ReadAuto(Settings.Load()));
         this.allowUnverifiedSayDrafts = allowUnverifiedSayDrafts ?? (() => Settings.Load().AllowUnverifiedSayDrafts);
         this.useClassicDefaults = useClassicDefaults ?? (() => contextReader is null && Settings.Load().UseClassicChatDefaults);
@@ -65,18 +70,20 @@ public sealed class DraftRouter : IDisposable
             handle=wvr_router_create(model);
             if(handle==0) throw new InvalidOperationException("Classifier could not load.");
             router=new(new(p.GetProperty("public_validated").GetBoolean(),p.GetProperty("public_threshold").GetDouble(),p.GetProperty("guild_threshold").GetDouble(),p.GetProperty("margin").GetDouble()));
+            intentPolicy = new(p.GetProperty("public_validated").GetBoolean(),p.GetProperty("public_threshold").GetDouble(),p.GetProperty("guild_threshold").GetDouble(),p.GetProperty("margin").GetDouble());
+            textOnlyFeatures = p.TryGetProperty("feature_mode",out var mode) && mode.GetString()=="text_only";
             modelError="";
         }
         catch(Exception e) when(e is IOException or JsonException or InvalidOperationException or DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {modelError=e.Message;}
         Poll();
-        timer=new(_=>Poll(),null,TimeSpan.FromMilliseconds(250),TimeSpan.FromMilliseconds(250));
+        if(!UsesAddonRouting) timer=new(_=>Poll(),null,TimeSpan.FromMilliseconds(250),TimeSpan.FromMilliseconds(250));
     }
     public void RefreshContext() => Poll();
     public bool ClassifierLoaded => handle != 0;
     public bool ChatDraftRecordingAvailable
     {
-        get {lock(gate) return tracker.Current?.FocusedText is null;}
+        get {lock(gate) return UsesAddonRouting || tracker.Current?.FocusedText is null;}
     }
     public bool FocusedFieldAvailable
     {
@@ -86,7 +93,7 @@ public sealed class DraftRouter : IDisposable
     {
         lock(gate)
         {
-            if(disposed) return;
+            if(disposed || UsesAddonRouting) return;
             try
             {
                 var context = readContext();
@@ -102,6 +109,7 @@ public sealed class DraftRouter : IDisposable
         lock(gate)
         {
             ObjectDisposedException.ThrowIf(disposed,this);
+            if(UsesAddonRouting) return PrepareForAddon(text);
             copiedContext=tracker.Current;
             detachedTranscript=null;
             var timing=Stopwatch.StartNew();
@@ -141,7 +149,7 @@ public sealed class DraftRouter : IDisposable
             var scores=new Dictionary<Destination,double>();
             if(handle!=0 && fresh)
             {
-                byte[] output=new byte[2048];int count=wvr_predict(handle,Features.Encode(text,context),output,output.Length);
+                byte[] output=new byte[2048];int count=wvr_predict(handle,textOnlyFeatures ? Features.MessageOnly(text) : Features.Encode(text,context),output,output.Length);
                 if(count<0) return new(text,null,"Unconfirmed","Classifier failed; clipboard retained.",timing.Elapsed.TotalMilliseconds);
                 foreach(string line in Encoding.UTF8.GetString(output,0,count).Split('\n',StringSplitOptions.RemoveEmptyEntries))
                 {
@@ -150,6 +158,7 @@ public sealed class DraftRouter : IDisposable
                         scores[destination]=score;
                 }
             }
+            if(textOnlyFeatures && !Features.HasGuildAddress(text)) scores.Remove(Destination.Guild);
             var decision=router.Decide(new(text,TranscriptionStatus.Success),context,fresh,scores);
             var draft=Router.Draft(decision.Message,decision,context,fresh);
             string audience=decision.ChannelId is int id ? $"{decision.ChannelName} (/{id})" : decision.Destination?.ToString() ?? "Unconfirmed";
@@ -158,11 +167,54 @@ public sealed class DraftRouter : IDisposable
                 (modelError.Length>0 ? " Classifier unavailable: "+modelError : ""),timing.Elapsed.TotalMilliseconds);
         }
     }
+    private RoutedDraft PrepareForAddon(string text)
+    {
+        var timing=Stopwatch.StartNew();
+        text=text.Trim();
+        if(AddonEnvelope.ValidateMessage(text) is { } error) return new(text,null,"Needs editing",error,0);
+        string hint="default";
+        if(handle!=0 && textOnlyFeatures)
+        {
+            byte[] output=new byte[2048];
+            int count=wvr_predict(handle,Features.MessageOnly(text),output,output.Length);
+            if(count>=0)
+            {
+                var scores=new List<(Destination Kind,double Score)>();
+                foreach(string line in Encoding.UTF8.GetString(output,0,count).Split('\n',StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var parts=line.Split('\t');
+                    if(parts.Length==2 && Enum.TryParse<Destination>(parts[0].Replace("__label__",""),true,out var destination) &&
+                        double.TryParse(parts[1],NumberStyles.Float,CultureInfo.InvariantCulture,out var score) && double.IsFinite(score) && score is >=0 and <=1)
+                        scores.Add((destination,score));
+                }
+                var ranked=scores.OrderByDescending(s=>s.Score).ToArray();
+                if(ranked.Length>0)
+                {
+                    var best=ranked[0]; bool publicRoute=best.Kind is Destination.General or Destination.Trade or Destination.LookingForGroup;
+                    double threshold=publicRoute ? intentPolicy.PublicThreshold : intentPolicy.GuildThreshold;
+                    if((best.Kind==Destination.Guild && Features.HasGuildAddress(text) || publicRoute && intentPolicy.PublicValidated) && best.Score>=threshold &&
+                        best.Score-(ranked.Length>1 ? ranked[1].Score : 0)>=intentPolicy.Margin)
+                        hint="i:"+best.Kind.ToString().ToLowerInvariant();
+                }
+            }
+        }
+        return new(text,text,hint=="default" ? "Auto (addon)" : hint[2..]+" (suggested)",
+            "Addon resolves explicit instructions, current groups and joined channels on the final click. No screen capture or setup. Search fields receive plain text."+
+            (modelError.Length>0 ? " Classifier unavailable; addon defaults remain available." : ""),timing.Elapsed.TotalMilliseconds) {AddonHint=hint};
+    }
+
     public RoutedDraft Confirm(string text, string prefix, int verifiedLimit, bool bytes)
     {
         lock(gate)
         {
             ObjectDisposedException.ThrowIf(disposed,this);
+            if(UsesAddonRouting)
+            {
+                string? hint=prefix switch {"/say" or "/s"=>"m:say","/g"=>"m:guild","/p"=>"m:party","/raid" or "/ra"=>"m:raid","/i"=>"m:instance",_=>null};
+                if(hint is null && int.TryParse(prefix.TrimStart('/'),out int channel) && channel is >0 and <=9999) hint="m:channel:"+channel;
+                string? error=AddonEnvelope.ValidateMessage(text);
+                return new(text,error is null && hint is not null ? text : null,prefix,error ?? (hint is null ? "Invalid destination." : "Manual destination; addon checks availability at paste."),0) {AddonHint=hint ?? "default"};
+            }
             detachedTranscript=null;
             copiedContext=tracker.Current;
             var context=tracker.Current;bool fresh=tracker.IsFresh(clock.Elapsed);
@@ -227,7 +279,7 @@ public sealed class DraftRouter : IDisposable
 
     public void Dispose()
     {
-        timer.Dispose();
+        timer?.Dispose();
         lock(gate) {disposed=true;if(handle!=0){wvr_destroy(handle);handle=0;}}
     }
 }

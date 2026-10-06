@@ -536,6 +536,9 @@ public sealed class Engine : IAsyncDisposable
             case ChatAction.DictateWhileClosed or ChatAction.DictateInMenu when router.FocusedFieldAvailable && !probe:
                 ControllerDictation(b.Dictate.Text);
                 break;
+            case ChatAction.DictateInMenu when router.UsesAddonRouting && !probe:
+                ControllerDictation(b.Dictate.Text);
+                break;
             case ChatAction.DictateWhileClosed when router.ChatDraftRecordingAvailable && !probe:
                 ControllerDictation(b.Dictate.Text);
                 break;
@@ -575,6 +578,11 @@ public sealed class Engine : IAsyncDisposable
         lastDictationClick = now;
         if (session.IsPasting) return;
         if (!session.IsReady) { session.Start(trigger); return; }
+        if(router.UsesAddonRouting && LastDraft is { } localDraft)
+        {
+            _=DeliverToAddonByControllerAsync(localDraft);
+            return;
+        }
         router.RefreshContext();
         if(router.CanRecoverDetachedDraft)
         {
@@ -586,6 +594,15 @@ public sealed class Engine : IAsyncDisposable
         if (config.AutoSubmit && !router.FocusedFieldAvailable && LastDraft is { } prepared)
             _ = SubmitByControllerAsync(prepared);
         else _ = OpenAndPasteByControllerAsync();
+    }
+
+    async Task DeliverToAddonByControllerAsync(RoutedDraft draft)
+    {
+        string? error;
+        try { error=await session.DeliverToAddonAsync(draft).ConfigureAwait(false); }
+        catch(Exception failure) { error="Addon delivery stopped: "+failure.Message; }
+        if(error is not null) { Log.Warn(error); PublishCopiedDraft(draft with {Reason=error}); }
+        else { Log.Info("Draft delivery requested once. The addon resolves the target; check the game for the final audience. Search submission stays manual."); Changed(); }
     }
 
     async Task SubmitByControllerAsync(RoutedDraft draft)

@@ -22,10 +22,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Verify actual Lua addon geometry and wire fixtures
+      - name: Verify actual Lua addon routing and input protocol
         run: |
           python -m pip install lupa==2.6
-          python tests/addon_probe_test.py
+          python tests/addon_local_routing_test.py
+          python tests/training_test.py
       - name: Core tests
         run: dotnet run --project tests/SpeakForever.Core.Tests -c Release
       - name: Deterministic routing tests

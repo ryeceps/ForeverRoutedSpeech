@@ -1,25 +1,34 @@
-# Three-click controller acceptance tests
+# Controller acceptance checks: addon-local routing
 
-Preview 2 implements RS start -> RS finish -> wait for Ready -> RS open/paste. By default, press the game's A/send control separately. With **Auto-send on final stick click** enabled in Settings, the final RS click also sends after the addon confirms the pasted text and audience. Search submission remains manual. This is not a timed double-click.
+Use the matching current app and addon. Public Preview 2 predates the one-way inbox. After updating the addon, reload WoW once. Disable the game's right-stick ping binding. No capture, prefix or channel setup is required.
 
-**Disable controller pings in WoW's settings before playing.** Unbind the game's right-stick click ping action; otherwise recording, finishing, and pasting can each ping. Remove any conflicting left-stick action too: left-stick click cancels the companion's recording or ready draft.
+## Basic chat
 
-Current source automatically discovers the visible addon strip if its saved location stops decoding (one background search at most every 30 seconds). No prefix verification or channel configuration is required with the default Classic mode. Routing uses explicit instructions first, then supported model inference, an open chat audience, Instance/Raid/Party membership, the selected chat audience retained while solo, and finally Say. Joining General alone does not make every message public. The addon reads current joined-channel IDs; do not configure General as always `/1` or Trade as always `/2`.
+1. Keep native chat closed. RS starts recording; move while speaking.
+2. RS finishes; wait for the companion's editable, human-readable draft. It shows Auto (addon) or a suggested audience, not confirmed game context.
+3. RS delivers once through the invisible inbox. The native chat header must show the final audience. With auto-send off, A sends separately.
+4. With Auto-send on final stick click enabled in Settings, the addon validates the final field and requests native chat send once. Search never auto-submits. Client rejection leaves a draft for A; it never retries or sends on transcription completion.
+5. LS cancels recording/ready delivery before it is committed. After a native draft exists, use the game's Back control to dismiss it. An already sent message cannot be retracted.
 
-The latest source reads a compact 128 × 32 physical-pixel black/white bridge automatically and handles physical display coordinates, clipped borderless-window bounds, and WoW's normalized UI scaling. No calibration button or stored position is needed for the new addon. A freshly loaded addon reconnects on normal polling. A detached standalone draft can be rerouted from its retained transcript on the next deliberate click once fresh context arrives, without recording again or overwriting a clipboard changed by another program. Loading an updated addon still requires the game's normal UI reload/relog; the companion does not reload the game automatically.
+## Named routing cases
 
-The app has launched on the development PC and the user has tested the basic chat flow. These are acceptance checks for additional clients and controller configurations, not a claim that every case has been verified. Do not disable security or elevate the app to bypass restrictions.
+- `solo_default`: Hey guys → Say.
+- `party_default`: same words while in a party → Party; joined General alone must not override it.
+- `group_transition`: change group after transcription, before final RS → current Instance/Raid/Party, not an old app snapshot.
+- `explicit_general`: In General, anyone need a tank? → currently joined General ID; instruction removed.
+- `channel_renumbering`: rejoin/renumber General or Trade → actual current ID.
+- `explicit_say_override`: Tell everyone around me we need help while grouped → Say.
+- `explicit_unavailable`: unjoined Trade/General or absent Guild → no fallback send; choose another route in the companion.
+- `custom_channel`: In Officers, meeting tonight → joined Officers; no inferred custom-channel intent.
+- `guild_reference`: I mentioned the guild yesterday / Hello friends → group or Say, not Guild.
+- `open_chat`: empty supported native chat already focused → preserve that audience unless an explicit/manual/model request overrides it.
+- `occupied_field`: existing chat/search text remains unchanged; packet metadata must not enter that final field.
+- `search`: already focused empty AH/text field → original plain transcript, including words like Tell guild; A/search confirmation remains manual even with auto-send on.
 
-- Starting with the stick held or reconnecting while held must not trigger recording or paste.
-- Holding a button produces one action. Clicks within 250 ms are ignored; clicks during transcription never queue a paste.
-- Third click pastes only a ready, owned clipboard draft into a foreground Wow/WowB window with fresh addon context and a verified focused chat/AH field.
-- Changed clipboard, channel numbering, group/session, field, prefixes/limits, stale heartbeat, minimized game or another foreground app refuses paste and preserves the draft.
-- Successful paste occurs once. A failed/partial Windows shortcut never retries automatically; inspect the field and paste manually if needed.
-- Existing text is not selected or cleared. With auto-send off, paste leaves the game send control to the user. With it on, chat submits once only after matching text and audience readback. A search field must never auto-submit.
-- Auto-send never starts when transcription finishes. Left-stick cancellation before submission stops the workflow; it cannot retract an already sent message. Chat cleanup must not discard remaining text or send twice.
-- Silence, failed transcription, invalid or oversized draft cannot reach paste. Editing and recopying invalidates the old ready state.
-- Back/cancel, closing chat and controller disconnect cancel readiness. Keyboard dictation keeps manual Ctrl+V and cancel-ready behavior.
+## Failure and lifecycle checks
 
-The companion previews the draft before paste. The addon observes the native field after paste; it does not read the clipboard or synthesize game keys. Classic chat defaults use conventional prefixes and a conservative 200-byte cap without setup verification commands. Joined-channel numbers come from live context; unjoined destinations remain unavailable. Auction House and other search fields still require registered, confirmed field context. Policy approval remains unverified; see POLICY.md.
+Changing clipboard or switching away from the recognized foreground game must prevent delivery. A failed/partial Windows shortcut must not retry. Missing addon/unsupported shortcut/invisible-field focus cannot be confirmed by the app because the handoff has no reverse acknowledgement; inspect the in-game field/status, not an app success label.
 
-The optional large addon preview is hidden by default (`/wvr preview on|off`). Chat focus can be established automatically when the keyboard-focus object matches the active chat edit box; API failures or unfocused chat block paste. Temporary unverified-Say mode requires the focused audience to be Say at paste time. Opening Say after recording is allowed; switching to a different audience is blocked.
+Damaged, incomplete, expired or recently repeated packets must not route/send. Missing local group/channel APIs must refuse chat. Oversized, multiline or leading-command speech requires editing; no truncation. Unsupported native Enter callbacks/protected actions must preserve a draft for manual send. Only an empty native chat box may be hidden after submission.
+
+Actual Forever keyboard focus, override bindings, combat behavior, protected send, controller cancellation and game performance remain live acceptance work. Tests run Lua mocks and native inference without operating the game. See [stack and regression contract](ADDON-ROUTING.md).

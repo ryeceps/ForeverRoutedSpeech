@@ -1,0 +1,35 @@
+{
+  "data": "Authored bootstrap; scores are uncalibrated",
+  "split_sizes": {
+    "train": 106,
+    "validation": 48,
+    "test": 53
+  },
+  "public_candidate_threshold": 0.8,
+  "margin": 0.1,
+  "validation_public": {
+    "emitted": 16,
+    "correct": 16,
+    "precision": 1.0,
+    "recall": 0.6666666666666666,
+    "independent_families": 7
+  },
+  "heldout_public": {
+    "emitted": 16,
+    "correct": 16,
+    "precision": 1.0,
+    "recall": 0.6666666666666666,
+    "independent_families": 7
+  },
+  "heldout_guild": {
+    "emitted": 5,
+    "correct": 5,
+    "precision": 1.0,
+    "recall": 0.7142857142857143,
+    "independent_families": 2
+  },
+  "public_enabled": false,
+  "gate": "95% precision; 100 emitted routes and 30 independent paraphrase families in each validation and test split",
+  "model_sha256": "c8429fb7062ce14f5d12dcfe2a65a5d96f3bebe1c4f3b171ace5eb2ae19798d2",
+  "corpus_sha256": "f39833e1d2e5cab038306452c89aea51549a49e0a8ed39b13382a72cd2eb3fec"
+}

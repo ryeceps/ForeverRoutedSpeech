@@ -24,6 +24,16 @@ public sealed record InferencePolicy(bool PublicValidated = false, double Public
     double GuildThreshold = .9, double Margin = .2);
 public static class Features
 {
+    public static bool HasGuildAddress(string text) => System.Text.RegularExpressions.Regex.IsMatch(text.Trim(),
+        @"^(?:(?:hey|hello|hi|yo|good morning|good evening)\s+)?(?:guildies|guildmates|guild folks|guild friends)\b|^(?:how(?:'s| is) (?:the |our )?guild\b|anyone in (?:our |the )?guild\b)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    public static string MessageOnly(string text)
+    {
+        string normalized=string.Join(' ',text.ToLowerInvariant().Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries));
+        return normalized+(System.Text.RegularExpressions.Regex.IsMatch(normalized,
+            @"^(?:(?:hey|hello|hi|yo|good morning|good evening)\s+)?(?:guildies|guildmates|guild folks|guild friends)\b",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant) ? " addr_guild" : "");
+    }
     // Shared verbatim with training/prepare.py. Context contains no volatile IDs or channel names.
     public static string Encode(string text, GameContext? context) =>
         string.Join(' ', text.ToLowerInvariant().Replace('\n', ' ').Replace('\r', ' ').Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)) +

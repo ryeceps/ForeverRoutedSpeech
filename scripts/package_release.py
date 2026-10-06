@@ -39,7 +39,7 @@ def main():
                 archive.writestr("VoiceRouter/VoiceRouter.toc", path.read_text(encoding="utf-8").replace("@INTERFACE@", str(args.interface)))
             elif path.is_file():
                 archive.write(path, "VoiceRouter/" + path.name)
-        archive.writestr("INSTALL.txt", "Copy VoiceRouter into the game's Interface/AddOns folder (currently _classic_beta_/Interface/AddOns). Enable it in WoW, reload the UI, then click Find game status strip in the app. Interface: " + str(args.interface) + ".\n")
+        archive.writestr("INSTALL.txt", "Replace the VoiceRouter addon folder with this version. Copy it into the game's Interface/AddOns folder (currently _classic_beta_/Interface/AddOns). Enable it and reload WoW once. Use the matching updated app. No status strip, calibration or context setup. Interface: " + str(args.interface) + ".\n")
     app_zip = dist / "ForeverRoutedSpeech-windows-x64.zip"
     with zipfile.ZipFile(app_zip, "w", zipfile.ZIP_DEFLATED, compresslevel=3) as archive:
         for path in sorted(package.rglob("*")):

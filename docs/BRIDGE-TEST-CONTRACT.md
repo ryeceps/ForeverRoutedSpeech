@@ -1,3 +1,5 @@
+> Historical pixel-bridge contract. The default path now uses [addon-local routing](ADDON-ROUTING.md); these checks remain legacy coverage.
+
 # Addon connection regression contract
 
 Connection changes must exercise the actual addon geometry and the detector used by Windows capture. A decoder-only test with perfectly placed synthetic bits is insufficient.

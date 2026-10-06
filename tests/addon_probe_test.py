@@ -42,7 +42,7 @@ function GetChannelList() return 4, 'Trade - City', false, 9, 'Friends é', fals
 SLASH_SAY1 = '/say'; SLASH_GUILD1 = '/g'; SLASH_PARTY1 = '/p'; SLASH_RAID1 = '/raid'; SLASH_INSTANCE_CHAT1 = '/i'
 function print(...) end
 ''')
-source_path=Path(sys.argv[sys.argv.index('--addon-source')+1]) if '--addon-source' in sys.argv else root/"addon/VoiceRouter/VoiceRouter.lua"
+source_path=Path(sys.argv[sys.argv.index('--addon-source')+1]) if '--addon-source' in sys.argv else root/"tests/fixtures/legacy-pixel-addon.lua"
 lua.execute(source_path.read_text(encoding="utf-8"))
 lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter'); handlers.OnUpdate(nil,.25)")
 assert lua.globals().strip.width==128 and lua.globals().strip.height==32, 'compact bridge at minimum one-pixel cell pitch'
