@@ -26,9 +26,9 @@ A ready draft can also be pasted with RS into a field the player has already foc
 
 ## Control signal and plain clipboard
 
-`AddonControl` encodes ASCII metadata: `frs2 <32-hex nonce> <hint> <UTF8 byte count> <8-hex Adler32>`. The checksum covers the header plus the original speech. Hints distinguish inferred (`i:guild`) from manual (`m:guild`, `m:channel:7`) routes. There is no send flag or executable command.
+`AddonControl` encodes ASCII metadata: `frs3 <32-hex nonce> <hint> <UTF8 byte count> <8-hex Adler32>`. The checksum covers the header plus the original speech. Hints distinguish inferred (`i:guild`) from manual (`m:guild`, `m:channel:7`) routes. There is no send flag or executable command.
 
-The companion holds Ctrl + Alt + Shift for a short internal function-key sequence. F17 begins, F1 through F16 encode hexadecimal nibbles, F18 commits, and F19 cancels. Only metadata travels this way; the clipboard remains the original plain transcript throughout. The addon assigns its internal bindings automatically and observes focused edit-box key events. These shortcuts and actual client dispatch still require Forever acceptance testing.
+The companion holds Ctrl + Shift, never Alt or Windows, for a short internal function-key sequence. F17 begins; each hexadecimal nibble uses two base-4 digits on F13–F16; F18 commits and F19 cancels. F1–F12 never occur. The native Windows stroke plan enforces this allowlist before dispatch. Only metadata travels this way; the clipboard remains the original plain transcript throughout. The addon assigns its internal bindings automatically and observes focused edit-box key events. These shortcuts and actual client dispatch still require Forever acceptance testing.
 
 `AddonDeliveryWorkflow` waits 120 ms before the control signal when native chat is opening, then another 120 ms before paste. It checks foreground game, clipboard ownership and modifiers before each input step. Cancellation during the initial wait causes no input. Partial Windows input never retries. The waits allow event processing; they are not receipt acknowledgements.
 
@@ -66,4 +66,4 @@ dotnet run --project tests/VoiceRouter.Tests -c Release
 dotnet run --project tests/Routing.Smoke -c Release -- dist/ForeverRoutedSpeech
 ```
 
-Upgrade companion and addon together, then reload WoW once. The public Preview 2 archive predates this protocol.
+This v3 key alphabet replaces the unsafe v2 Ctrl + Alt + Shift / F1–F16 alphabet, which could emit Alt+F4. Upgrade companion and addon together, then reload WoW once. The public Preview 2 archive predates this protocol.

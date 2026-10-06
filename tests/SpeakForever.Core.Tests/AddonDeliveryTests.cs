@@ -17,7 +17,7 @@ public class AddonDeliveryTests
         foreach(var v in vectors) Assert.Equal(v.Packet,AddonEnvelope.Encode(v.Text,v.Hint,v.Send,v.Nonce));
     }
 
-    sealed record ControlVector(string Text,string Hint,string Nonce,string Hex);
+    sealed record ControlVector(string Text,string Hint,string Nonce,string Hex,ushort[] Keys);
     [Fact]
     public void ControlSignalMatchesActualLuaAcceptedVectors()
     {
@@ -26,11 +26,40 @@ public class AddonDeliveryTests
         {
             Assert.Equal(v.Hex,AddonControl.Encode(v.Text,v.Hint,v.Nonce));
             var keys=AddonControl.Keys(v.Text,v.Hint,v.Nonce);
+            Assert.Equal(v.Keys,keys);
             Assert.Equal(AddonControl.BeginKey,keys[0]); Assert.Equal(AddonControl.CommitKey,keys[^1]);
-            Assert.All(keys.Skip(1).SkipLast(1),key=>Assert.InRange(key,(ushort)0x70,(ushort)0x7f));
+            Assert.All(keys.Skip(1).SkipLast(1),key=>Assert.InRange(key,(ushort)0x7c,(ushort)0x7f));
             Assert.DoesNotContain((ushort)0x0d,keys); Assert.DoesNotContain((ushort)0x1b,keys);
         }
     }
+
+    [Fact]
+    public void ProductionWindowsPlanNeverHoldsAltOrUsesCloseKeysAndReleasesEveryKey()
+    {
+        var held=new HashSet<ushort>();
+        var keys=AddonControl.Keys("In General, hello 世界","default",new string('3',32));
+        foreach(var stroke in AddonControl.Strokes(keys))
+        {
+            Assert.True(stroke.Key is 0x10 or 0x11 || stroke.Key is >=0x7c and <=0x82);
+            Assert.NotEqual((ushort)0x12,stroke.Key); // Alt must never be synthesized.
+            Assert.NotEqual((ushort)0x73,stroke.Key); // F4, including Ctrl+F4, must never occur.
+            Assert.NotEqual((ushort)0x0d,stroke.Key);
+            Assert.NotEqual((ushort)0x1b,stroke.Key);
+            if(stroke.Released) Assert.True(held.Remove(stroke.Key));
+            else Assert.True(held.Add(stroke.Key));
+        }
+        Assert.Empty(held);
+        Assert.DoesNotContain(AddonControl.Strokes([AddonControl.CancelKey]),s=>s.Key==0x12);
+    }
+
+    [Theory]
+    [InlineData((ushort)0x73)] // Retired F4 route, with any modifiers.
+    [InlineData((ushort)0x12)] // Alt
+    [InlineData((ushort)0x0d)] // Enter
+    [InlineData((ushort)0x1b)] // Escape
+    [InlineData((ushort)0x5b)] // Windows
+    public void UnsafeControlKeyIsRejectedBeforeNativeInput(ushort key) =>
+        Assert.Throws<ArgumentException>(()=>AddonControl.Strokes([AddonControl.BeginKey,key,AddonControl.CommitKey]));
 
     [Theory]
     [InlineData("", "default")]

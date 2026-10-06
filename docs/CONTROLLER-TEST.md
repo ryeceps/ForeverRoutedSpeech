@@ -27,6 +27,6 @@ Install the matching current app and addon, then reload WoW once. Public Preview
 
 Switching applications, changing clipboard, cancellation and partial input must stop delivery without retry. Corrupted/incomplete/replayed/expired signals must not route or mark ready. Test native field caps (e.g. shorter search boxes): a truncated paste must report mismatch, never claim complete text or send. Review and shorten manually.
 
-No metadata should appear in the final field; the clipboard is always speech. Without addon/binding support, plain speech may paste without routing. The companion cannot acknowledge receipt. Verify F1–F19 dispatch, key-event/binding interaction, native header updates, combat behavior and the absence of protected-action warnings on the actual client.
+No metadata should appear in the final field; the clipboard is always speech. Without addon/binding support, plain speech may paste without routing. The companion cannot acknowledge receipt. Verify Ctrl + Shift + F13–F19 dispatch, key-event/binding interaction, native header updates, combat behavior and the absence of protected-action warnings on the actual client.
 
 No live game input was executed during development. Automated tests establish code behavior, not Forever's protected execution environment or gameplay impact.

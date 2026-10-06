@@ -25,7 +25,7 @@ function IsResting() return true end
 function InCombatLockdown() return false end
 function IsControlKeyDown() return true end
 function IsShiftKeyDown() return true end
-function IsAltKeyDown() return true end
+function IsAltKeyDown() return altDown==true end
 function GetCurrentKeyBoardFocus() return focused end
 function SetOverrideBindingClick(owner,priority,key,button) bindings[key]=button end
 function CreateFrame(kind,name)
@@ -90,14 +90,14 @@ counter=0
 def control(text,hint='default',nonce=None):
     global counter
     if nonce is None: counter+=1; nonce=counter
-    header=f'frs2 {nonce:032x} {hint} {len(text.encode("utf-8"))}'
+    header=f'frs3 {nonce:032x} {hint} {len(text.encode("utf-8"))}'
     checksum=zlib.adler32((header+' '+text).encode('utf-8'))
     return (header+f' {checksum:08x}').encode('ascii').hex()
 def signal(number): lua.execute(f'frames.ForeverRoutedSpeechControl{number}.scripts.OnClick()')
+def wire_keys(hex):
+    return [17]+[key for nibble in hex for key in (13+int(nibble,16)//4,13+int(nibble,16)%4)]+[18]
 def arm(hex):
-    signal(17)
-    for nibble in hex: signal(int(nibble,16)+1)
-    signal(18)
+    for key in wire_keys(hex): signal(key)
 def tick(seconds=.15): lua.execute(f'now=now+{seconds};adapter.scripts.OnUpdate()')
 def manual_chat(): lua.execute("chat.shown=true;focused=chat;adapter.scripts.OnUpdate()")
 def paste(text,settle=True):
@@ -118,8 +118,8 @@ for forbidden in ('SetFocus','ClearFocus','OpenChat','OnEnterPressed','SlashCmdL
     assert forbidden not in source, f'forbidden native UI path: {forbidden}'
 assert lua.globals().frames['ForeverRoutedSpeechInbox'] is None
 assert lua.globals().frames['VoiceRouterStatusStrip'] is None
-assert lua.globals().bindings['CTRL-ALT-SHIFT-F17']=='ForeverRoutedSpeechControl17'
-assert lua.globals().bindings['CTRL-ALT-SHIFT-F19']=='ForeverRoutedSpeechControl19'
+assert lua.globals().bindings['CTRL-SHIFT-F17']=='ForeverRoutedSpeechControl17'
+assert lua.globals().bindings['CTRL-SHIFT-F19']=='ForeverRoutedSpeechControl19'
 toc=(root/'addon/VoiceRouter/VoiceRouter.toc.in').read_text()
 assert 'LocalRouter.lua' in toc and 'Inbox.lua' in toc and '\nVoiceRouter.lua' not in toc and 'SavedVariables:' not in toc
 binding=ET.parse(root/'addon/VoiceRouter/Bindings.xml').getroot()
@@ -163,9 +163,14 @@ reset();manual_chat();arm(control('Hello')[:-2]+'00');paste('Hello');assert lua.
 reset();manual_chat();arm(control('In General, hello'));tick(4);paste('In General, hello');check('SAY','In General, hello')
 reset();manual_chat();arm(control('In General, cancelled'));signal(19);paste('In General, cancelled');check('SAY','In General, cancelled')
 reset();manual_chat();arm(control('Moved'));lua.execute('focused=search');paste('Moved');assert lua.globals().chat.text=='' and lua.globals().search.text=='Moved'
+# The old system-key alphabet is never bound or accepted; odd base-4 frames refuse.
+assert all('ALT' not in key for key in lua.globals().bindings.keys())
+assert all(lua.globals().frames[f'ForeverRoutedSpeechControl{i}'] is None for i in range(1,13))
+reset();manual_chat();signal(17);signal(13);signal(18);paste('Not a complete control')
+check('SAY','Not a complete control')
 # Focused native fields can consume global bindings; test the key-event dispatch too.
 reset();manual_chat();encoded=control('In General, key-event route')
-for number in [17]+[int(n,16)+1 for n in encoded]+[18]:
+for number in wire_keys(encoded):
     lua.globals().control_key=f'F{number}'
     lua.execute('chat.hooks.OnKeyDown(chat,control_key)')
 paste('In General, key-event route');check('CHANNEL','key-event route',1)
@@ -188,7 +193,7 @@ vectors=[]
 for index,(text,hint) in enumerate([('Hello 世界','default'),('In General, hey guys','default'),('Guildies hello','i:guild'),('Stormwind','m:channel:9999')],1):
     encoded=control(text,hint,index);decoded=lua.globals().VoiceRouterLocal.control(encoded)
     assert lua.globals().VoiceRouterLocal.matches(decoded,text)
-    vectors.append(dict(text=text,hint=hint,nonce=f'{index:032x}',hex=encoded))
+    vectors.append(dict(text=text,hint=hint,nonce=f'{index:032x}',hex=encoded,keys=[0x6f+key for key in wire_keys(encoded)]))
 path=root/'tests/fixtures/addon-control.json'
 if '--write-fixture' in sys.argv: path.write_text(json.dumps(vectors,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
 else: assert json.loads(path.read_text(encoding='utf-8'))==vectors

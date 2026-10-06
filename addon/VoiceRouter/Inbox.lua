@@ -24,6 +24,7 @@ local function commit()
     local transaction=collecting; collecting=nil
     if GetTime()-transaction.started>3 or focus()~=transaction.edit then notify("Field changed before delivery. Nothing was routed."); return end
     local control,error=R.control(transaction.hex)
+    if transaction.digit~=nil then notify("Incomplete routing control digit. Nothing was routed."); return end
     if not control then notify(error); return end
     if seen[control.nonce] then notify("Repeated draft control signal. Nothing was routed."); return end
     seen[control.nonce]=true; seenOrder[#seenOrder+1]=control.nonce
@@ -36,8 +37,10 @@ local function signal(key)
     elseif key=="F19" then cancel()
     elseif collecting then
         local number=tonumber(key:match("^F(%d+)$"))
-        if number and number>=1 and number<=16 and #collecting.hex<160 then
-            collecting.hex=collecting.hex..string.format("%x",number-1)
+        if number and number>=13 and number<=16 and #collecting.hex<160 then
+            local digit=number-13
+            if collecting.digit==nil then collecting.digit=digit
+            else collecting.hex=collecting.hex..string.format("%x",collecting.digit*4+digit); collecting.digit=nil end
         else cancel(); notify("Routing control signal exceeded its frame. Nothing was routed.") end
     end
 end
@@ -104,11 +107,11 @@ local function hook(edit)
         if not busy and pending and pending.edit==edit then pending.changed=GetTime() end
     end)
     edit:HookScript("OnKeyDown",function(_,key)
-        if R.call(IsControlKeyDown) and R.call(IsShiftKeyDown) and R.call(IsAltKeyDown) then signal(key); hook(focus()) end
+        if R.call(IsControlKeyDown) and R.call(IsShiftKeyDown) and not R.call(IsAltKeyDown) and key:match("^F1[3-9]$") then signal(key); hook(focus()) end
     end)
 end
 local buttons={}
-for i=1,19 do
+for i=13,19 do
     local key="F"..i
     local button=CreateFrame("Button","ForeverRoutedSpeechControl"..i,UIParent)
     button:SetScript("OnClick",function() signal(key); hook(focus()) end)
@@ -117,7 +120,7 @@ end
 local function bind()
     if R.call(InCombatLockdown) then return end
     if type(SetOverrideBindingClick)~="function" then notify("Routing shortcut API unavailable. Plain speech remains on the clipboard."); return end
-    for i=1,19 do SetOverrideBindingClick(buttons[i],true,"CTRL-ALT-SHIFT-F"..i,"ForeverRoutedSpeechControl"..i) end
+    for i=13,19 do SetOverrideBindingClick(buttons[i],true,"CTRL-SHIFT-F"..i,"ForeverRoutedSpeechControl"..i) end
 end
 events:RegisterEvent("PLAYER_LOGIN"); events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("ADDON_ACTION_BLOCKED"); events:RegisterEvent("ADDON_ACTION_FORBIDDEN")

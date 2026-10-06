@@ -1,5 +1,14 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 6: third-click game-close regression
+
+The retired v2 Windows control sequence held Ctrl, Shift and Alt while encoding metadata with F1–F16. The mandatory header contains hexadecimal digit 3, so its data alphabet emits F4 while Alt is held. That is a concrete system-shortcut hazard consistent with the reported game closure. Passive logs end with foreground-game failures after dictation; no new WoW crash report was found. No live input was executed, so the exact client close event remains unobserved.
+
+The v3 replacement uses Ctrl + Shift only, F13–F16 base-4 data pairs and F17–F19 framing/cancellation. Native dispatch consumes the same allowlisted stroke plan tested in C#: no Alt, Windows, F1–F12, Enter or Escape, and every held key is released. Invalid key plans reject before SendInput. Lua fixtures cover the actual new key sequence plus focused-field callbacks; old bindings and incomplete pairs are rejected.
+
+232 core tests pass, including the production stroke plan, rejection of close/system/submit keys, cross-language key vectors and cancellation. This establishes that the current control handoff cannot synthesize Alt+F4; it does not guarantee all Forever input or destination updates are compatible. Update both components and reload once before the player acceptance test.
+
+
 ## October 6: native field adapter and fewer controller actions
 
 The client screenshot identified forbidden `SetPreferredGamepadInteractTarget()` in the previous opening/focus path. The replacement creates no addon EditBox and invokes no native open, focus, clear-focus, hide or send handlers. Production Lua mocks forbid native opening/focus and verify live routes, checksummed metadata, plain paste, fragmented text events, both binding-button and focused key-event dispatch, occupied-field preservation, Unicode, native field truncation, cancellation, expiry and protected-action refusal.

@@ -121,14 +121,12 @@ public static partial class Native
     {
         attempted=false;
         if(CheckInput(version) is { } blocked) return blocked;
-        var keys=new List<PasteInput> {new(){Type=1,Key=0x11},new(){Type=1,Key=0x10},new(){Type=1,Key=0x12}};
-        foreach(ushort key in control) {keys.Add(new(){Type=1,Key=key});keys.Add(new(){Type=1,Key=key,Flags=2});}
-        keys.Add(new(){Type=1,Key=0x12,Flags=2});keys.Add(new(){Type=1,Key=0x10,Flags=2});keys.Add(new(){Type=1,Key=0x11,Flags=2});
+        var keys=VoiceRouter.Core.AddonControl.Strokes(control).Select(stroke=>new PasteInput{Type=1,Key=stroke.Key,Flags=stroke.Released ? 2u : 0u}).ToArray();
         attempted=true;
-        if(SendInput((uint)keys.Count,[..keys],Marshal.SizeOf<PasteInput>())==keys.Count) return null;
+        if(SendInput((uint)keys.Length,keys,Marshal.SizeOf<PasteInput>())==keys.Length) return null;
         // Release only. Never repeat an incomplete transaction or leave a control key held.
         var release=control.Distinct().Select(key=>new PasteInput{Type=1,Key=key,Flags=2}).ToList();
-        foreach(ushort key in new ushort[]{0x12,0x10,0x11}) release.Add(new(){Type=1,Key=key,Flags=2});
+        foreach(ushort key in new ushort[]{0x10,0x11}) release.Add(new(){Type=1,Key=key,Flags=2});
         SendInput((uint)release.Count,[..release],Marshal.SizeOf<PasteInput>());
         return "Windows did not accept the routing control signal. No input was retried.";
     }
