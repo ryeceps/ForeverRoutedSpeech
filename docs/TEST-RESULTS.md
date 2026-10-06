@@ -2,6 +2,8 @@
 
 ## October 6: one-way inbox and addon-local context
 
+Protected-action follow-up: automatic submission has been removed from the addon and current controller path. Legacy settings cannot enable it, and packets with the old send flag remain manual drafts. The Settings toggle and current README infographic now describe manual A confirmation. Earlier optional-send checks below are historical. Draft preparation itself still requires client acceptance.
+
 Paste regression follow-up: the previous inbox rejected an initial partial OnTextChanged callback, dropping focus before the full packet arrived. A fragmented-paste test fails against the committed pre-fix Inbox.lua and passes with the 100 ms quiet-interval fix. The companion also no longer restores clipboard text immediately after queued Ctrl+V; the packet remains stable until the next deliberate copy. These are reproduced code-level failures/risk fixes; the user's exact live event sequence has not been observed.
 
 The default path no longer captures pixels or requires heartbeat/setup evidence. The app produces text-only intent hints and delivers a framed/checksummed packet to an invisible addon inbox on the final physical click. The addon resolves current group/guild, joined channel IDs and focused text targets locally. Legacy pixel renderer/preview files are removed from installation and packaging, and are retained only as historical test fixtures. The normal clipboard stays human-readable; no game context travels back to the app.

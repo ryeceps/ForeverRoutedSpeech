@@ -45,7 +45,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         bool encoded=false;
         try
         {
-            var packet=AddonEnvelope.Encode(draft.Message,draft.AddonHint,settings().AutoSubmit,Guid.NewGuid().ToString("N"));
+            var packet=AddonEnvelope.Encode(draft.Message,draft.AddonHint,false,Guid.NewGuid().ToString("N"));
             if(Native.CopyText(packet,out var next,version) is { } copyError) return copyError;
             version=next; encoded=true;
             (string? Error,bool Attempted) Input(AddonInput action)

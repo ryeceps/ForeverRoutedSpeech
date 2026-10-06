@@ -6,8 +6,7 @@ Use the matching current app and addon. Public Preview 2 predates the one-way in
 
 1. Keep native chat closed. RS starts recording; move while speaking.
 2. RS finishes; wait for the companion's editable, human-readable draft. It shows Auto (addon) or a suggested audience, not confirmed game context.
-3. RS delivers once through the invisible inbox. The native chat header must show the final audience. With auto-send off, A sends separately.
-4. With Auto-send on final stick click enabled in Settings, the addon validates the final field and requests native chat send once. Search never auto-submits. Client rejection leaves a draft for A; it never retries or sends on transcription completion.
+3. RS delivers once through the invisible inbox. The native chat header must show the final audience. A sends separately.
 5. LS cancels recording/ready delivery before it is committed. After a native draft exists, use the game's Back control to dismiss it. An already sent message cannot be retracted.
 
 ## Named routing cases
@@ -23,7 +22,7 @@ Use the matching current app and addon. Public Preview 2 predates the one-way in
 - `guild_reference`: I mentioned the guild yesterday / Hello friends → group or Say, not Guild.
 - `open_chat`: empty supported native chat already focused → preserve that audience unless an explicit/manual/model request overrides it.
 - `occupied_field`: existing chat/search text remains unchanged; packet metadata must not enter that final field.
-- `search`: already focused empty AH/text field → original plain transcript, including words like Tell guild; A/search confirmation remains manual even with auto-send on.
+- `search`: already focused empty AH/text field → original plain transcript, including words like Tell guild; A/search confirmation remains manual even with a legacy send flag.
 
 ## Failure and lifecycle checks
 

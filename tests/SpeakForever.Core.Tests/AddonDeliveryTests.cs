@@ -34,6 +34,9 @@ public class AddonDeliveryTests
     }
 
     [Fact]
+    public void LegacyAutoSendSettingCannotEnableSubmission() => Assert.False((new SpeakForever.Configuration.Config { AutoSubmit=true }).AutoSubmit);
+
+    [Fact]
     public void DefaultRouterNeedsNoCaptureContextAndCopiesHumanText()
     {
         using var router=new DraftRouter(Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")));

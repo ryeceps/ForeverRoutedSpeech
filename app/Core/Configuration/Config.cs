@@ -26,8 +26,9 @@ public sealed record Config
 
     public string SendChord { get; init; } = "A";
 
-    /// <summary>Optional final-click chat submission; disabled by default.</summary>
-    public bool AutoSubmit { get; init; }
+    /// <summary>Retired setting accepted for old config files; submission is always manual.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification="Accept retired instance JSON settings without enabling automatic send.")]
+    public bool AutoSubmit { get => false; init { } }
     public string BackChord { get; init; } = "B";
 
     /// <summary>The panel's Chat Channels and Tab Settings menus, which reuse A and B.</summary>

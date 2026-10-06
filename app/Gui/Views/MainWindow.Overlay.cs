@@ -65,7 +65,7 @@ public sealed partial class MainWindow
         {
             if (engine.LastDraft?.Destination == "Say (standalone)")
                 ButtonPrompt.Fill(target, "Copied standalone draft. Paste manually; game context is not verified.");
-            else if (controller) ButtonPrompt.Fill(target, start + (engine.Config.AutoSubmit ? "Click {0} again to open chat, paste, and send. Left-stick click cancels." : "Click {0} again to open chat and paste. Press A in the game to send. Left-stick click cancels."), style, dictate);
+            else if (controller) ButtonPrompt.Fill(target, start + "Click {0} again to open chat and paste. Press A in the game to send. Left-stick click cancels.", style, dictate);
             else ButtonPrompt.Fill(target, $"{start}Press Ctrl+V to paste it, or {key} to cancel.");
             if (engine.LastDraft is { } draft)
             {

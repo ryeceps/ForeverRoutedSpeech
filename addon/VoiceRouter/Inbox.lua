@@ -14,6 +14,9 @@ local function activeChat()
     return type(ChatFrameUtil)=="table" and R.call(ChatFrameUtil.GetActiveWindow) or R.call(ChatEdit_GetActiveWindow)
 end
 local function focus() return R.call(GetCurrentKeyBoardFocus) end
+local function restricted(edit)
+    return edit and (R.call(edit.IsForbidden,edit) or R.call(edit.IsAnchoringRestricted,edit))
+end
 local function isChat(edit)
     return edit and (edit==activeChat() or R.call(edit.GetChatType,edit)~=nil or R.call(edit.GetAttribute,edit,"chatType")~=nil)
 end
@@ -24,13 +27,14 @@ end
 local function cancel()
     local previous=pending and pending.focus
     pending=nil; busy=true; inbox:SetText(""); inbox:ClearFocus(); busy=false
-    if previous and R.call(previous.IsShown,previous) then R.call(previous.SetFocus,previous) end
+    if previous and not restricted(previous) and R.call(previous.IsShown,previous) then R.call(previous.SetFocus,previous) end
 end
 local function prepare()
     cancel()
     local current=focus()
     local blocked
-    if current and type(current.GetText)=="function" and (R.call(current.GetText,current) or "")~="" then
+    if restricted(current) then blocked="This text field is restricted by the client. Use native controls."
+    elseif current and type(current.GetText)=="function" and (R.call(current.GetText,current) or "")~="" then
         blocked="The current field contains text. Finish or clear it before dictation paste."
     end
     local search=current and not isChat(current) and R.call(current.IsObjectType,current,"EditBox")
@@ -50,6 +54,7 @@ local function selected(edit,context,open)
     return kinds[kind] and {kind=kinds[kind],open=open} or {unsupported=true,open=open}
 end
 local function setField(edit,text)
+    if restricted(edit) then return nil,"This text field is restricted by the client. Use native controls." end
     local maxBytes=R.call(edit.GetMaxBytes,edit)
     local maxLetters=R.call(edit.GetMaxLetters,edit)
     local _,letters=text:gsub("[^\128-\191]","")
@@ -114,17 +119,8 @@ local function consume()
     local filled,fieldError=setField(edit,decision.message)
     if not filled then notify(fieldError); return end
     local name=decision.channel and decision.channel.name.." (/"..decision.channel.id..")" or decision.kind
-    if not packet.send then notify(name.." draft ready. Press A to send."); return end
-    -- Recheck immediately before invoking the game's own Enter handler. Never retry.
-    if not R.call(edit.HasFocus,edit) or R.call(edit.GetText,edit)~=decision.message then notify("Chat focus/text changed. Send stopped."); return end
-    local enter=R.call(edit.GetScript,edit,"OnEnterPressed")
-    if type(enter)~="function" then notify("Auto-send unavailable on this client. Press A to send."); return end
-    local submitted,why=pcall(enter,edit)
-    if not submitted then notify("Auto-send blocked by the client. Review the draft and press A. "..tostring(why)); return end
-    if R.call(edit.GetText,edit)==decision.message then notify("The client left the draft unsent. Review it and press A; no retry was made."); return end
-    -- Never Escape or discard text blindly. Hide only an empty native edit box.
-    if R.call(edit.GetText,edit)=="" then R.call(edit.ClearFocus,edit); R.call(edit.Hide,edit) end
-    notify(name.." send requested once; server delivery is unconfirmed.")
+    -- Old packets may request send. Ignore that flag: only the player submits chat.
+    notify(name.." draft ready. Press A to send.")
 end
 -- Native pastes can emit multiple changes. Decode only after a quiet interval,
 -- otherwise the first slash/header would cancel focus and lose the remaining text.
@@ -161,7 +157,16 @@ local function hookKeys(edit)
 end
 local events=CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN"); events:RegisterEvent("PLAYER_REGEN_ENABLED")
-events:SetScript("OnEvent",function() bind(); hookKeys(lastChat()) end)
+events:RegisterEvent("ADDON_ACTION_BLOCKED"); events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+events:SetScript("OnEvent",function(_,event,addonName,functionName)
+    if event=="ADDON_ACTION_BLOCKED" or event=="ADDON_ACTION_FORBIDDEN" then
+        if addonName=="VoiceRouter" or addonName=="ForeverRoutedSpeech" then
+            notify("Client blocked "..tostring(functionName).." ("..event.."). Use native controls; no automatic send or retry.")
+        end
+        return
+    end
+    bind(); hookKeys(lastChat())
+end)
 local elapsed=0
 events:SetScript("OnUpdate",function(_,dt)
     elapsed=elapsed+dt

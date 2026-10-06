@@ -591,9 +591,7 @@ public sealed class Engine : IAsyncDisposable
             router.CompleteDetachedRecovery();
             PublishCopiedDraft(recovered);
         }
-        if (config.AutoSubmit && !router.FocusedFieldAvailable && LastDraft is { } prepared)
-            _ = SubmitByControllerAsync(prepared);
-        else _ = OpenAndPasteByControllerAsync();
+        _ = OpenAndPasteByControllerAsync();
     }
 
     async Task DeliverToAddonByControllerAsync(RoutedDraft draft)
@@ -603,24 +601,6 @@ public sealed class Engine : IAsyncDisposable
         catch(Exception failure) { error="Addon delivery stopped: "+failure.Message; }
         if(error is not null) { Log.Warn(error); PublishCopiedDraft(draft with {Reason=error}); }
         else { Log.Info("Draft delivery requested once. The addon resolves the target; check the game for the final audience. Search submission stays manual."); Changed(); }
-    }
-
-    async Task SubmitByControllerAsync(RoutedDraft draft)
-    {
-        string? error;
-        try { error = await session.SubmitPreparedAsync(draft, router.SubmissionContext).ConfigureAwait(false); }
-        catch (Exception failure) { error = "Submission stopped: " + failure.Message; }
-        if (error is null)
-        {
-            chat.Close();
-            Changed();
-            Log.Info("Final-click chat submit requested once; server delivery is unconfirmed.");
-        }
-        else
-        {
-            Log.Warn(error);
-            PublishCopiedDraft(draft with { Reason = error });
-        }
     }
 
     async Task OpenAndPasteByControllerAsync()

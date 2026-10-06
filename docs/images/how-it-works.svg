@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1020" viewBox="0 0 960 1020" role="img" aria-labelledby="title desc">
   <title id="title">ForeverRoutedSpeech: three clicks from speech to chat</title>
-  <desc id="desc">First right-stick click records. Second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Third click delivers through an invisible addon inbox. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses A to send or optional auto-send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
+  <desc id="desc">First right-stick click records. Second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Third click delivers through an invisible addon inbox. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses a manual A press to send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#94a3b8"/></marker>
     <style>
@@ -57,9 +57,9 @@
   <rect x="40" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
   <text x="65" y="740" class="head">CHAT</text>
   <text x="65" y="773" class="body">Native chat opens with routed text.</text>
-  <text x="65" y="808" class="small">Auto-send OFF: press A to send.</text>
-  <text x="65" y="836" class="small">Auto-send ON in Settings: request one send.</text>
-  <text x="65" y="862" class="small">Close chat afterward only if the field is empty.</text>
+  <text x="65" y="808" class="small">Press A in WoW to send yourself.</text>
+  <text x="65" y="836" class="small">The addon never submits chat.</text>
+  <text x="65" y="862" class="small">The game handles closing chat after sending.</text>
   <rect x="490" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
   <text x="515" y="740" class="head">AUCTION HOUSE / SEARCH</text>
   <text x="515" y="773" class="body">Already focused, empty text field.</text>

@@ -13,7 +13,7 @@ The Windows x64 app uses Whisper **Turbo q5_0 only**, with Vulkan where availabl
 1. Click the right stick to start recording. Keep moving with chat closed.
 2. Click it again to stop and transcribe. Wait for the editable draft preview.
 3. Click it when Ready to deliver the draft to the addon. The addon reads current context and opens the native chat draft, or fills an already focused empty text/search field.
-4. With auto-send **off**, press the game's A/send control to send chat. With **Auto-send on final stick click** enabled in Settings, the addon checks the routed draft and requests chat send once. Search confirmation is always manual.
+4. Press the game's A/send control to send chat yourself. Chat and search submission are always manual.
 
 Left-stick click cancels before delivery. It cannot retract a sent message. Disable WoW's controller ping binding for right-stick click, otherwise each dictation click can ping.
 
@@ -34,7 +34,7 @@ The native chat header shows the final audience; the companion preview shows a s
 - The inbox waits for 100 ms without text changes before validating, so a paste arriving in several callbacks is not rejected halfway through. The delivery packet stays on the clipboard until the next deliberate copy; queued Windows input does not prove WoW has read it. The next prepared draft copies readable text again.
 - The **addon** validates packet version, UTF-8 byte length, checksum, recent duplicate ID and expiry. It gathers party/raid/instance, guild, joined channel IDs/names and location locally at delivery time. No game context leaves WoW.
 - It removes only a recognized spoken routing instruction, resolves the destination, then fills native chat. The native chat header shows the actual final audience. Search fields receive the original plain transcript, without routing metadata or chat prefixes.
-- Optional auto-send invokes the native chat edit box's Enter handler once after checking destination, complete text and focus. Client rejection leaves a draft for manual sending. An empty chat edit box is closed; unsent text is never discarded. The companion cannot observe an acknowledgement or guarantee server delivery.
+- The addon never invokes the chat Enter handler or submits chat/search. Even old delivery packets requesting auto-send leave a draft for the player to confirm. The old Settings option has been removed.
 
 The internal shortcut is assigned by the addon; users do not map an extra controller button. If the addon is missing, its binding API is unsupported, or the invisible inbox cannot take focus, delivery cannot be guaranteed. The app has no reverse acknowledgement channel. Native focus, shortcut and protected-send behavior must be checked on the Forever client; unit tests do not establish live compatibility.
 

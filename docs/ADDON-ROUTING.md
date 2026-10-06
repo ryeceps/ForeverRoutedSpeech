@@ -13,7 +13,7 @@ flowchart LR
   Inbox --> Route
   Route --> Chat[Native chat draft]
   Route --> Search[Already focused empty text field]
-  Chat --> Send[A to send, or optional guarded auto-send]
+  Chat --> Send[Player presses A to send]
   Search --> Confirm[Manual search confirmation]
 ```
 
@@ -35,7 +35,7 @@ Joined names and numbers are resolved at delivery. General/Trade are not hardcod
 
 ## Sending and failure limits
 
-With auto-send off, Lua opens/populates native chat and leaves A to the user. With it on, Lua verifies the destination, channel target, entire message and focused edit box, then invokes that edit box's native Enter handler once. It never auto-submits a search. An absent/protected/ineffective Enter handler leaves the draft for manual send; it does not retry. Only an empty native chat box is hidden afterward.
+Lua opens/populates native chat and leaves submission to the player's A press. It never invokes the Enter handler or submits chat/search, including when an older packet requests send. The retired auto-send setting is ignored. A protected-action warning is client evidence, not proof of a TOS decision; if draft preparation itself is blocked, this handoff also needs replacing.
 
 This is a **one-way** handoff. The companion cannot verify that the addon received the shortcut, that its invisible edit box obtained focus, or that the server accepted a message. Missing addon/binding/focus support must be diagnosed on the client; the app reports a delivery request rather than a successful send. The current tests establish Lua/control-flow behavior, not Forever protected-input compatibility. The visible bridge could provide feedback; removing it trades that feedback for a simpler UI. Do not add a timed blind Enter as a substitute.
 

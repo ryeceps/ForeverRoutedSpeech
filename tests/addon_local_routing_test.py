@@ -104,6 +104,7 @@ def check_chat(kind,text,channel=None):
     if channel is not None: assert lua.globals().chat.channel==channel
     assert lua.globals().sends==0
 
+assert 'OnEnterPressed' not in (root/'addon/VoiceRouter/Inbox.lua').read_text(), 'addon must never invoke native send'
 inbox=lua.globals().frames['ForeverRoutedSpeechInbox']
 assert inbox.alpha==0 and inbox.width==1 and inbox.height==1
 assert inbox.font=='GameFontNormal' and inbox.shown, 'hidden-by-alpha inbox still has native font and is shown for keyboard focus'
@@ -136,7 +137,7 @@ for end in (1,12,60,len(fragmented)):
     assert lua.eval('focused==frames.ForeverRoutedSpeechInbox'), 'partial paste must retain inbox focus until settled'
     assert lua.globals().sends==0
 lua.execute('now=now+.15; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
-assert lua.globals().sends==1 and lua.globals().sentText=='fragmented paste'
+assert lua.globals().sends==0 and lua.globals().chat.text=='fragmented paste'
 assert context.zone=='Ironforge' and context.city and context.resting
 lua.execute("function GetZoneText() return 'Goldshire' end")
 context=lua.globals().VoiceRouterLocal.context()
@@ -179,8 +180,13 @@ assert lua.globals().sends==0 and not lua.globals().chat.shown
 reset();prepare();lua.execute("frames.ForeverRoutedSpeechCancelInbox.scripts.OnClick()");paste(packet('Cancelled',send=True))
 assert lua.globals().sends==0 and not lua.globals().chat.shown
 reset();raw=deliver('In General, hello',send=True)
-assert lua.globals().sends==1 and lua.globals().sentText=='hello' and lua.globals().sentChannel==1 and not lua.globals().chat.shown
+assert lua.globals().sends==0 and lua.globals().chat.text=='hello' and lua.globals().chat.channel==1 and lua.globals().chat.shown
 reset();prepare();paste(raw);assert lua.globals().sends==0
+reset();lua.execute("focused=search; function search:IsForbidden() return true end");deliver('Restricted',send=True)
+assert lua.globals().search.text=='' and lua.globals().sends==0
+lua.execute('search.IsForbidden=nil')
+lua.execute("allFrames[#allFrames].scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN','VoiceRouter','SendChatMessage()')")
+assert 'SendChatMessage()' in lua.globals().notices[len(lua.globals().notices)]
 reset();lua.execute('blockSend=true');deliver('Hello',send=True)
 assert lua.globals().sends==0 and lua.globals().chat.text=='Hello' and lua.globals().chat.shown
 reset();deliver('Hello 世界');check_chat('SAY','Hello 世界')
@@ -190,7 +196,7 @@ reset();lua.execute("chat:SetMaxBytes(3); function chat:GetMaxBytes() return 0 e
 deliver('Hello',send=True);assert lua.globals().sends==0 and lua.globals().chat.text=='', 'unexpected truncation rolls back only owned partial text'
 lua.execute("function chat:GetMaxBytes() return self.maxBytes end")
 reset();lua.execute('IsInGuild=nil');deliver('No API',send=True);assert lua.globals().sends==0
-print('PASS: actual Lua inbox and routing: no visible strip, group transitions, live channel IDs, explicit/custom/manual routes, unavailable targets, search, occupied fields, corruption, expiry, cancellation, replay, Unicode and guarded optional send. Live Forever APIs remain unverified.')
+print('PASS: actual Lua inbox and routing: no visible strip, group transitions, live channel IDs, explicit/custom/manual routes, unavailable targets, search, occupied fields, corruption, expiry, cancellation, replay, Unicode and manual-only send (including legacy send flags). Live Forever APIs remain unverified.')
 
 # Cross-language vectors: C# must emit exactly the packets Lua accepts.
 for index,(text,hint,send) in enumerate([('Hello 世界','default',False),('In General, hey guys','default',True),('Guildies hello','i:guild',False)],1):

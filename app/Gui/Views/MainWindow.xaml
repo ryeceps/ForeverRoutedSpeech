@@ -377,7 +377,7 @@
 
                             <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Dictate (controller)" Style="{StaticResource ItemTitle}" />
-                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Click the left stick to cancel; otherwise review and press A to send (unless auto-send is enabled)." />
+                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Click the left stick to cancel; otherwise review and press A to send." />
                             </StackPanel>
                             <Border x:Name="DictateCap" Grid.Row="1" Grid.Column="1" Style="{StaticResource Keycap}" />
                             <Button x:Name="DictateButton" Grid.Row="1" Grid.Column="2" Content="Change" Style="{StaticResource PanelButton}" Click="DictateButton_Click" />
@@ -423,13 +423,7 @@
                         </StackPanel>
                     </ContentControl>
 
-                    <ContentControl Style="{StaticResource Card}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Auto-send on final stick click" Style="{StaticResource FrameHeader}" />
-                            <ToggleSwitch x:Name="AutoSubmitSwitch" OnContent="On: final click opens, pastes, and sends" OffContent="Off: final click pastes; press A to send" Toggled="AutoSubmitSwitch_Toggled" />
-                            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Text="Off by default. The updated addon resolves the live audience and checks the complete draft before requesting chat send. Search fields always require manual confirmation. Nothing is sent when transcription finishes. Left-stick click cancels before delivery. No status strip or capture setup." />
-                        </StackPanel>
-                    </ContentControl>
+
 
                     <ContentControl Style="{StaticResource Card}">
                         <StackPanel Spacing="8">
