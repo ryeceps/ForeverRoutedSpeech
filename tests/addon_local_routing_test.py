@@ -2,6 +2,10 @@
 import json
 import sys
 import zlib
+import xml.etree.ElementTree as ET
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -108,6 +112,19 @@ assert lua.globals().bindings['CTRL-SHIFT-F10']=='ForeverRoutedSpeechOpenInbox'
 toc=(root/'addon/VoiceRouter/VoiceRouter.toc.in').read_text()
 assert 'LocalRouter.lua' in toc and 'Inbox.lua' in toc and '\nVoiceRouter.lua' not in toc
 assert '\nPreview.lua' not in toc and 'SavedVariables:' not in toc
+bindings_xml=ET.parse(root/'addon/VoiceRouter/Bindings.xml').getroot()
+assert bindings_xml.tag=='{http://www.blizzard.com/wow/ui/}Bindings' and len(bindings_xml)==0, 'loader compatibility file must contain no bindings'
+if os.name=='nt':
+    with tempfile.TemporaryDirectory(prefix='frs-addon-install-') as folder:
+        target=Path(folder)/'VoiceRouter'; target.mkdir()
+        for old in ('Bindings.xml','VoiceRouter.lua','Preview.lua'):
+            (target/old).write_text('obsolete fixture',encoding='utf-8')
+        subprocess.run(['powershell','-NoProfile','-File',str(root/'scripts/Install-Addon.ps1'),
+                        '-AddOnsDirectory',folder,'-Interface','16001'],check=True,capture_output=True)
+        for name in ('Bindings.xml','Inbox.lua','LocalRouter.lua'):
+            assert (target/name).read_bytes()==(root/'addon/VoiceRouter'/name).read_bytes(), name
+        assert not (target/'VoiceRouter.lua').exists() and not (target/'Preview.lua').exists()
+        assert 'Bindings.xml' not in (target/'VoiceRouter.toc').read_text(encoding='utf-8-sig')
 context=lua.globals().VoiceRouterLocal.context()
 
 # A real edit box may emit several OnTextChanged callbacks during one paste.

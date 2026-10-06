@@ -26,7 +26,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $root 'models/router.bin'),(Join-Path $root 'models/router-policy.json'),(Join-Path $root 'models/ggml-large-v3-turbo-q5_0.bin') -Destination (Join-Path $package 'models')
     Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README.md') -Destination $package
     Copy-Item -LiteralPath (Join-Path $root 'addon'),(Join-Path $root 'docs') -Destination $package -Recurse -Force
-    foreach($obsolete in @('Bindings.xml','VoiceRouter.lua','Preview.lua','VoiceRouter.toc')) {
+    foreach($obsolete in @('VoiceRouter.lua','Preview.lua','VoiceRouter.toc')) {
         $obsoletePath=Join-Path $package ('addon/VoiceRouter/'+$obsolete)
         if(Test-Path -LiteralPath $obsoletePath) {Remove-Item -LiteralPath $obsoletePath}
     }

@@ -66,7 +66,7 @@ Use this fork's scripts, rather than the retained upstream build scripts:
 ./scripts/Install-Addon.ps1 -AddOnsDirectory 'C:/Program Files (x86)/World of Warcraft/_classic_beta_/Interface/AddOns' -Interface 16001
 ```
 
-Use the actual client's AddOns directory and Interface number; 16001 is the observed beta value, not a promise for future builds. The installer removes the legacy renderer, preview and bindings files. Reload WoW once after installation. The portable package includes the .NET runtime, native libraries, pinned Turbo model, classifier and VC runtime prerequisite; normal operation needs no separate model download.
+Use the actual client's AddOns directory and Interface number; 16001 is the observed beta value, not a promise for future builds. The installer removes the legacy renderer and preview, and replaces the old bindings file with an empty loader compatibility file. Reload WoW once after installation. If updating a running client produces a missing-file warning, fully restart WoW to refresh its addon file list. The portable package includes the .NET runtime, native libraries, pinned Turbo model, classifier and VC runtime prerequisite; normal operation needs no separate model download.
 
 [Stack and tests](docs/ADDON-ROUTING.md) explain the implementation and its limits. [Controller acceptance checks](docs/CONTROLLER-TEST.md) cover live testing. [Test results](docs/TEST-RESULTS.md) distinguish mock/native tests from actual client evidence. [Policy notes](docs/POLICY.md) retain the prior review; this redesign is not a claim of Blizzard approval.
 

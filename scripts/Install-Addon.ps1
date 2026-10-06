@@ -4,8 +4,8 @@ $root = Split-Path $PSScriptRoot -Parent
 if (-not (Test-Path -LiteralPath $AddOnsDirectory -PathType Container)) { throw 'Choose the actual Forever Interface/AddOns directory.' }
 $target = Join-Path $AddOnsDirectory 'VoiceRouter'
 New-Item -ItemType Directory -Force -Path $target | Out-Null
-Copy-Item -LiteralPath (Join-Path $root 'addon/VoiceRouter/LocalRouter.lua'),(Join-Path $root 'addon/VoiceRouter/Inbox.lua') -Destination $target
-foreach($obsolete in @('Bindings.xml','VoiceRouter.lua','Preview.lua')) {
+Copy-Item -LiteralPath (Join-Path $root 'addon/VoiceRouter/LocalRouter.lua'),(Join-Path $root 'addon/VoiceRouter/Inbox.lua'),(Join-Path $root 'addon/VoiceRouter/Bindings.xml') -Destination $target
+foreach($obsolete in @('VoiceRouter.lua','Preview.lua')) {
     $obsoletePath=Join-Path $target $obsolete
     if(Test-Path -LiteralPath $obsoletePath) { Remove-Item -LiteralPath $obsoletePath }
 }
