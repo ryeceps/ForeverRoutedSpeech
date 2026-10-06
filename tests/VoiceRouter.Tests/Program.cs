@@ -11,14 +11,14 @@ GameContext Context(GroupCategory group = GroupCategory.Solo, bool guild = true)
 var router = new Router(new(true,.95,.9,.2));
 RouteDecision Route(string text, GameContext? c = null, bool fresh = true, Dictionary<Destination,double>? scores = null) => router.Decide(new(text,TranscriptionStatus.Success),c ?? Context(),fresh,scores);
 Check(Route("Hey, what's going on?").Destination == Destination.Say,"solo default");
-Check(Route("Hey, what's going on?",Context(GroupCategory.Party)).Destination == Destination.Say,"party default");
-Check(Route("hi",Context(GroupCategory.Raid)).Destination == Destination.Say,"raid default");
-Check(Route("hi",Context(GroupCategory.Instance)).Destination == Destination.Say,"instance default");
+Check(Route("Hey, what's going on?",Context(GroupCategory.Party)).Destination == Destination.Party,"party default");
+Check(Route("hi",Context(GroupCategory.Raid)).Destination == Destination.Raid,"raid default");
+Check(Route("hi",Context(GroupCategory.Instance)).Destination == Destination.Instance,"instance default");
 var explicitSay = Route("Tell everyone around me we need help",Context(GroupCategory.Party));
 Check(explicitSay.Destination == Destination.Say && explicitSay.Message == "we need help","explicit audience stripping only");
 Check(Route("Tell guild that we need help").Message == "we need help","instruction connector");
-Check(Route("don't tell guild we need help",Context(GroupCategory.Party)).Destination == Destination.Say,"negated directive");
-Check(Route("I mentioned guild chat",Context(GroupCategory.Party)).Destination == Destination.Say,"reference is not address");
+Check(Route("don't tell guild we need help",Context(GroupCategory.Party)).Destination == Destination.Party,"negated directive");
+Check(Route("I mentioned guild chat",Context(GroupCategory.Party)).Destination == Destination.Party,"reference is not address");
 Check(Route("Tell guild we need help",Context(guild:false)).Reason == RouteReason.ConfirmationRequired,"unavailable guild");
 var trade = Route("Ask in trade selling ore");
 Check(trade.Destination == Destination.Trade && trade.ChannelId == 4,"trade joined id");
@@ -29,7 +29,7 @@ Check(Route("hi",fresh:false).Reason == RouteReason.ConfirmationRequired,"stale 
 Check(Route("Tell guild hi",fresh:false).Message == "hi","stale retains stripped message");
 var inferred = Route("selling ore",scores:new(){[Destination.Trade]=.97,[Destination.Say]=.01});
 Check(inferred.Reason == RouteReason.ModelInference,"validated confident public");
-Check(Route("ore",Context(GroupCategory.Party),scores:new(){[Destination.Trade]=.8}).Destination == Destination.Say,"weak public default");
+Check(Route("ore",Context(GroupCategory.Party),scores:new(){[Destination.Trade]=.8}).Destination == Destination.Party,"weak public default");
 Check(Route("hi",scores:new(){[Destination.Trade]=.97,[Destination.General]=.9}).Reason == RouteReason.SayDefault,"margin");
 Check(new Router(new()).Decide(new("selling ore",TranscriptionStatus.Success),Context(),true,new Dictionary<Destination,double>{{Destination.Trade,.99}}).Reason == RouteReason.SayDefault,"public disabled until validated");
 Check(Route("hi",scores:new(){[Destination.Custom]=1}).Reason == RouteReason.SayDefault,"custom never inferred");
@@ -151,7 +151,7 @@ Check(Route("Tell everyone around me hello",activeParty).Destination==Destinatio
 var activeTrade=Context() with {ChatInput=ChatInputState.Open,ActiveDestination=Destination.Trade,ActiveChannelId=4};
 Check(Router.Draft("hello",Route("hello",activeTrade),activeTrade,true).ClipboardText=="/4 hello","active Trade channel preserved without inferred intent");
 Check(Route("hello",activeTrade with {Channels=[]}).Reason==RouteReason.ConfirmationRequired,"unavailable active channel blocks");
-Check(Route("hello",activeTrade with {ChatInput=ChatInputState.Closed}).Destination==Destination.Say,"closed panel defaults to Say");
+Check(Route("hello",activeTrade with {ChatInput=ChatInputState.Closed}).Destination==Destination.Trade,"closed panel retains selected channel");
 Check(Route("hello",Context() with {ActivePanelUnsupported=true}).Reason==RouteReason.ConfirmationRequired,"unsupported active audience blocks");
 Check(TextDrafts.Prepare(new("Tell guild thunderfury",TranscriptionStatus.Success),target with {Kind=TextFieldKind.Search},true).Text=="Tell guild thunderfury","search words preserved without stripping");
 Check(PasteContext.Validate(activeParty,activeParty with {ActiveDestination=Destination.Say},true) is not null,"paste refuses changed active chat panel");

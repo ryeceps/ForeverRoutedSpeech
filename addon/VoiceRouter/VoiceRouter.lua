@@ -109,15 +109,21 @@ local function focusedField(db)
     return "unsupported", name, 0, "chars"
 end
 local function activeAudience(joined, chatInput)
-    if chatInput ~= "open" then return "none", "" end
+    if chatInput == "unknown" then return "none", "" end
     local active = safe(chatApi())
+    if chatInput == "closed" then
+        local last = type(ChatFrameUtil) == "table" and ChatFrameUtil.GetLastActiveWindow or ChatEdit_GetLastActiveWindow
+        active = safe(last) or active or (DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.editBox)
+    end
     if not active then return "none", "" end
-    local kind = safe(active.GetAttribute, active, "chatType")
+    -- Modern clients expose methods; older clients expose the attributes directly.
+    local kind = chatInput == "closed" and safe(active.GetStickyType, active) or nil
+    kind = kind or safe(active.GetChatType, active) or safe(active.GetAttribute, active, "chatType")
     if not kind then return "none", "" end
     local names = {SAY="Say", GUILD="Guild", PARTY="Party", RAID="Raid", INSTANCE_CHAT="Instance"}
     if names[kind] then return names[kind], "" end
     if kind == "CHANNEL" then
-        local id = tonumber(safe(active.GetAttribute, active, "channelTarget"))
+        local id = tonumber(safe(active.GetChannelTarget, active) or safe(active.GetAttribute, active, "channelTarget"))
         if id then
             for record in joined:gmatch("[^;]+") do
                 local number, audience = record:match("^(%d+),([^,]+),")
@@ -125,7 +131,8 @@ local function activeAudience(joined, chatInput)
             end
         end
     end
-    return "unsupported", ""
+    -- A closed whisper/unjoined channel is not a target. Never infer from it.
+    return chatInput == "open" and "unsupported" or "none", ""
 end
 local function emit()
     local number = build()

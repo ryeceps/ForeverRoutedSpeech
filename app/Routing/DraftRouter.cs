@@ -36,7 +36,7 @@ public sealed class DraftRouter : IDisposable
     private readonly Func<bool> useClassicDefaults;
     public DraftRouter(string folder, Func<GameContext>? contextReader = null, Func<bool>? allowUnverifiedSayDrafts = null, Func<bool>? useClassicDefaults = null)
     {
-        readContext = contextReader ?? (() => WindowsCapture.Read(Settings.Load()));
+        readContext = contextReader ?? (() => WindowsCapture.ReadAuto(Settings.Load()));
         this.allowUnverifiedSayDrafts = allowUnverifiedSayDrafts ?? (() => Settings.Load().AllowUnverifiedSayDrafts);
         this.useClassicDefaults = useClassicDefaults ?? (() => contextReader is null && Settings.Load().UseClassicChatDefaults);
         try

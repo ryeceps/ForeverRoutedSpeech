@@ -20,6 +20,30 @@ public static class WindowsCapture
     private static string Title(nint window)
     {var title=new System.Text.StringBuilder(512);GetWindowText(window,title,title.Capacity);return title.ToString();}
     public static bool IsGameForeground(Settings settings)=>Title(GetForegroundWindow()).Equals(settings.WindowTitle,StringComparison.OrdinalIgnoreCase);
+    private static readonly object discoveryGate = new();
+    private static Task? discovery;
+    private static long nextDiscovery;
+    /// <summary>Read the small saved region; rediscover asynchronously if it is missing or moved.</summary>
+    public static GameContext ReadAuto(Settings settings)
+    {
+        try { return Read(settings); }
+        catch (Exception error) when (error is IOException or FormatException or ExternalException or ArgumentException)
+        {
+            lock (discoveryGate)
+            {
+                if ((discovery is null || discovery.IsCompleted) && Environment.TickCount64 >= nextDiscovery)
+                {
+                    nextDiscovery = Environment.TickCount64 + 30000;
+                    discovery = Task.Run(() =>
+                    {
+                        try { Calibrate(settings); }
+                        catch (Exception failure) when (failure is IOException or FormatException or ExternalException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { }
+                    });
+                }
+            }
+            throw; // No copying/pasting based on a guessed capture region.
+        }
+    }
     private static nint FindGameWindow(Settings settings)
     {
         nint window=GetForegroundWindow();

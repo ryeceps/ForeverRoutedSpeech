@@ -1,5 +1,11 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 5: automatic group and selected-channel context
+
+Ordinary closed-chat speech now defaults to Instance → Raid → Party when available. Solo speech retains the selected supported chat audience even with the edit box closed, falling back to Say if no target is selected. Explicit instructions still win and resolve current joined channel IDs. The addon supports both modern chat methods and legacy attributes/last-active APIs; remembered whispers and departed channels do not become targets. The companion searches for a moved/missing strip in the background, at most once every 30 seconds, while rejecting invalid capture context.
+
+191 core tests and 124 deterministic routing assertions passed. Lua 5.1 mocks cover modern/legacy closed-chat selection, General renumbering, channel departure, and unsupported audiences. Native integration checks exercise group transitions with the real classifier. The updated addon requires a UI reload; these tests do not establish live Forever delivery for the new behavior.
+
 ## October 4: Classic chat defaults and reasonable draft cap
 
 Added default Classic-style prefix assumptions and a 200 UTF-8 byte app cap, honoring smaller recorded limits conservatively. This removes the setup-skipped draft label with fresh live context. Actual joined channel numbers, membership, focus/readback, session and heartbeat remain required; unjoined destinations stay unavailable. Assumptions are applied locally and do not mark the addon's compatibility evidence as verified. 184 core tests passed, including Unicode boundaries, live renumbering, unjoined destinations, stale context and search-limit preservation.
@@ -57,4 +63,3 @@ Added separate start/finish/paste controller stages, 250 ms click suppression, d
 ## Active-panel/Say and search update
 
 112 deterministic routing/protocol assertions passed, including active-chat defaults, Say while grouped, unsupported audiences, changed-panel paste guards and search transcript preservation. Real fastText/default smoke checks passed (19 checks including model/default checks; routing mean 0.035 ms, screen capture excluded). Lua 5.1 addon protocol and preview mocks passed. These runs completed normally with Windows security unchanged; the historical Smart App Control block above was from the earlier final run. Live Forever API/focus and controller paste verification remain outstanding. The addon and companion must be updated together for protocol 3.
-

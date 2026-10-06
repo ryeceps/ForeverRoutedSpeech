@@ -4,6 +4,8 @@ Preview 2 implements RS start -> RS finish -> wait for Ready -> RS open/paste. B
 
 **Disable controller pings in WoW's settings before playing.** Unbind the game's right-stick click ping action; otherwise recording, finishing, and pasting can each ping. Remove any conflicting left-stick action too: left-stick click cancels the companion's recording or ready draft.
 
+Current source automatically discovers the visible addon strip if its saved location stops decoding (one background search at most every 30 seconds). No prefix verification or channel configuration is required with the default Classic mode. Routing uses explicit instructions first, then supported model inference, an open chat audience, Instance/Raid/Party membership, the selected chat audience retained while solo, and finally Say. Joining General alone does not make every message public. The addon reads current joined-channel IDs; do not configure General as always `/1` or Trade as always `/2`.
+
 The app has launched on the development PC and the user has tested the basic chat flow. These are acceptance checks for additional clients and controller configurations, not a claim that every case has been verified. Do not disable security or elevate the app to bypass restrictions.
 
 - Starting with the stick held or reconnecting while held must not trigger recording or paste.

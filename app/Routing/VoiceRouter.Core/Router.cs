@@ -52,6 +52,15 @@ public sealed class Router(InferencePolicy policy)
                 return new(active,context.ActiveChannelId,scores,RouteReason.ConfirmationRequired,"Active chat destination unavailable. Select a destination.",message,channel?.Name);
             return new(active,context.ActiveChannelId,scores,RouteReason.ActivePanelDefault,"Current active chat panel.",message,channel?.Name);
         }
+        foreach (var destination in new[] { Destination.Instance, Destination.Raid, Destination.Party })
+            if (Available(context, destination, null))
+                return new(destination, null, scores, RouteReason.GroupDefault, "Current " + destination + " group.", message);
+        if (context.ActiveDestination is Destination selected && Available(context, selected, context.ActiveChannelId))
+        {
+            var channel = context.Channels.FirstOrDefault(c => c.Id == context.ActiveChannelId && c.Kind == selected);
+            return new(selected, context.ActiveChannelId, scores, RouteReason.ActivePanelDefault,
+                "Selected chat audience, retained while chat is closed.", message, channel?.Name);
+        }
         if(Available(context,Destination.Say,null))
             return new(Destination.Say,null,scores,RouteReason.SayDefault,"Say default; no active chat destination known.",message);
         return new(null, null, scores, RouteReason.ConfirmationRequired, "No verified destination is available.", message);

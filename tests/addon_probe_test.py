@@ -104,7 +104,18 @@ fields,_=decode(frame());assert fields[9]=='search' and fields[10]=='InventorySe
 lua.execute("VoiceRouterProbeDB.chatInputVerified=nil; GetCurrentKeyBoardFocus=function() return search end; search.GetAttribute=function() return 'SAY' end; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=='open' and fields[13]=='Say', 'matching live keyboard and chat focus does not need manual flag'
 lua.execute("GetCurrentKeyBoardFocus=function() return nil end; handlers.OnUpdate(nil,.25)")
-fields,_=decode(frame());assert fields[8]=='closed' and fields[13]=='none', 'unfocused active chat never enables paste'
+fields,_=decode(frame());assert fields[8]=='closed' and fields[13]=='Say', 'closed chat retains audience but never enables paste'
+lua.execute("ChatFrameUtil.GetActiveWindow=function() return nil end; ChatFrameUtil.GetLastActiveWindow=function() return search end; search.GetChatType=function() return 'CHANNEL' end; search.GetStickyType=function() return 'CHANNEL' end; search.GetChannelTarget=function() return 7 end; search.GetAttribute=nil; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[8]=='closed' and fields[13]=='Custom' and fields[14]=='7', 'modern last selected channel retained without open chat or setup'
+lua.execute("function GetChannelList() return 6,'General - Zone',false end; search.GetChannelTarget=function() return 6 end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='General' and fields[14]=='6', 'current General ID detected without assuming channel 1'
+lua.execute("function GetChannelList() return end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='none', 'left channel never remains available'
+lua.execute("ChatFrameUtil=nil; function ChatEdit_GetActiveWindow() return nil end; function ChatEdit_GetLastActiveWindow() return search end; search.GetStickyType=nil; search.GetChatType=function() return 'PARTY' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='Party' and fields[8]=='closed', 'legacy last chat methods supported'
+lua.execute("search.GetChatType=function() return 'WHISPER' end; handlers.OnUpdate(nil,.25)")
+fields,_=decode(frame());assert fields[13]=='none', 'closed unsupported audience never becomes a destination'
+lua.execute("ChatEdit_GetLastActiveWindow=nil; ChatEdit_GetActiveWindow=function() return search end; search.GetChatType=nil; search.GetAttribute=function() return 'SAY' end")
 lua.execute("GetCurrentKeyBoardFocus=function() error('focus failure') end; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[8]=='unknown', 'focus API failure blocks paste'
 lua.execute("SlashCmdList.VOICEROUTER('preview on')")
