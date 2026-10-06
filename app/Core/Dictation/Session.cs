@@ -66,8 +66,9 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
         {
             lock(gate)
             {
-                // Restore the human-readable clipboard only while it is still ours.
-                if(encoded && Native.OwnsClipboard(version)) Native.CopyText(draft.ClipboardText!,out copied,version);
+                // SendInput queues Ctrl+V; it does not acknowledge the game's clipboard read.
+                // Keep the packet stable until the next deliberate clipboard operation.
+                if(encoded && Native.OwnsClipboard(version)) copied=version;
                 ready=!result.Attempted && !cts.IsCancellationRequested;
                 pasting=null; phase(ready ? DictationPhase.Ready : DictationPhase.Idle); cts.Dispose();
             }

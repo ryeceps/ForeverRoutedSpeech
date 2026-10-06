@@ -126,10 +126,17 @@ local function consume()
     if R.call(edit.GetText,edit)=="" then R.call(edit.ClearFocus,edit); R.call(edit.Hide,edit) end
     notify(name.." send requested once; server delivery is unconfirmed.")
 end
-inbox:SetScript("OnTextChanged",consume)
+-- Native pastes can emit multiple changes. Decode only after a quiet interval,
+-- otherwise the first slash/header would cancel focus and lose the remaining text.
+inbox:SetScript("OnTextChanged",function()
+    if not busy and pending then pending.changed=GetTime() end
+end)
 inbox:SetScript("OnEscapePressed",cancel)
 inbox:SetScript("OnUpdate",function()
-    if pending and GetTime()-pending.started>3 then cancel(); notify("Draft inbox timed out. Nothing was sent.") end
+    if pending and GetTime()-pending.started>3 then cancel(); notify("Draft inbox timed out. Nothing was sent.")
+    elseif pending and pending.changed and GetTime()-pending.changed>=.1 then
+        pending.changed=nil; consume()
+    end
 end)
 local openButton=CreateFrame("Button","ForeverRoutedSpeechOpenInbox",UIParent)
 openButton:SetScript("OnClick",prepare)

@@ -88,9 +88,10 @@ def packet(text,hint='default',send=False,nonce=None):
     return f'/frs1 {nonce:032x} {hint} {int(send)} {len(b)} {zlib.adler32(protected):08x} {text}'
 def prepare():
     lua.execute("frames.ForeverRoutedSpeechOpenInbox.scripts.OnClick()")
-def paste(raw):
+def paste(raw,settle=True):
     lua.globals().raw=raw
     lua.execute("frames.ForeverRoutedSpeechInbox:SetText(raw)")
+    if settle: lua.execute('now=now+.15; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
 def deliver(text,hint='default',send=False):
     prepare();raw=packet(text,hint,send);paste(raw);return raw
 def reset(): lua.execute('reset()')
@@ -108,6 +109,17 @@ toc=(root/'addon/VoiceRouter/VoiceRouter.toc.in').read_text()
 assert 'LocalRouter.lua' in toc and 'Inbox.lua' in toc and '\nVoiceRouter.lua' not in toc
 assert '\nPreview.lua' not in toc and 'SavedVariables:' not in toc
 context=lua.globals().VoiceRouterLocal.context()
+
+# A real edit box may emit several OnTextChanged callbacks during one paste.
+# Never reject the initial slash/header before the rest of the packet arrives.
+reset();prepare();fragmented=packet('In General, fragmented paste',send=True)
+for end in (1,12,60,len(fragmented)):
+    paste(fragmented[:end],settle=False)
+    lua.execute('now=now+.05; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
+    assert lua.eval('focused==frames.ForeverRoutedSpeechInbox'), 'partial paste must retain inbox focus until settled'
+    assert lua.globals().sends==0
+lua.execute('now=now+.15; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
+assert lua.globals().sends==1 and lua.globals().sentText=='fragmented paste'
 assert context.zone=='Ironforge' and context.city and context.resting
 lua.execute("function GetZoneText() return 'Goldshire' end")
 context=lua.globals().VoiceRouterLocal.context()
