@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1020" viewBox="0 0 960 1020" role="img" aria-labelledby="title desc">
+  <title id="title">ForeverRoutedSpeech: three clicks from speech to chat</title>
+  <desc id="desc">First right-stick click records. Second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Third click delivers through an invisible addon inbox. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses A to send or optional auto-send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#94a3b8"/></marker>
+    <style>
+      text {font-family:Segoe UI,Arial,sans-serif}
+      .title {font-size:34px;font-weight:700;fill:#f8fafc}
+      .head {font-size:22px;font-weight:700;fill:#f8fafc}
+      .body {font-size:18px;fill:#cbd5e1}
+      .small {font-size:16px;fill:#cbd5e1}
+      .label {font-size:15px;font-weight:700;letter-spacing:2px;fill:#5eead4}
+      .click {font-size:20px;font-weight:700;fill:#0f172a}
+      .line {fill:none;stroke:#94a3b8;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="960" height="1020" rx="24" fill="#0f172a"/>
+  <text x="40" y="55" class="label">FOREVERROUTEDSPEECH</text>
+  <text x="40" y="105" class="title">Speak. Review. Route.</text>
+  <text x="40" y="140" class="body">Three right-stick clicks. Local speech recognition. Live addon context.</text>
+
+  <rect x="40" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
+  <rect x="60" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
+  <text x="175" y="227" text-anchor="middle" class="click">CLICK 1 · RECORD</text>
+  <text x="60" y="280" class="head">Speak your message</text>
+  <text x="60" y="318" class="body">Microphone → audio</text>
+  <text x="60" y="350" class="small">Chat stays closed.</text>
+  <text x="60" y="376" class="small">Keep moving while speaking.</text>
+
+  <path d="M316 290 H338" class="line"/>
+  <rect x="345" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
+  <rect x="365" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
+  <text x="480" y="227" text-anchor="middle" class="click">CLICK 2 · FINISH</text>
+  <text x="365" y="280" class="head">Transcribe + preview</text>
+  <text x="365" y="318" class="body">Whisper Turbo → text</text>
+  <text x="365" y="350" class="small">fastText suggests an audience.</text>
+  <text x="365" y="376" class="small">Review or edit; wait for Ready.</text>
+
+  <path d="M621 290 H643" class="line"/>
+  <rect x="650" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
+  <rect x="670" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
+  <text x="785" y="227" text-anchor="middle" class="click">CLICK 3 · DELIVER</text>
+  <text x="670" y="280" class="head">Hand draft to addon</text>
+  <text x="670" y="318" class="body">Validated clipboard packet</text>
+  <text x="670" y="350" class="small">Invisible addon inbox.</text>
+  <text x="670" y="376" class="small">No visible strip or calibration.</text>
+
+  <path d="M785 412 V434 H480 V454" class="line"/>
+  <rect x="40" y="465" width="880" height="170" rx="18" fill="#12303a" stroke="#2dd4bf"/>
+  <text x="65" y="502" class="label">INSIDE WOW · CONTEXT READ AT DELIVERY</text>
+  <text x="65" y="543" class="head">The addon chooses the actual destination</text>
+  <text x="65" y="576" class="body">Party · Raid · Instance · Guild · Joined channel IDs · Location · Focused field</text>
+  <text x="65" y="608" class="small">Explicit “in General” → model suggestion → current chat / group defaults → Say</text>
+
+  <path d="M480 643 V664 H255 V687" class="line"/>
+  <path d="M480 664 H705 V687" class="line"/>
+  <rect x="40" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
+  <text x="65" y="740" class="head">CHAT</text>
+  <text x="65" y="773" class="body">Native chat opens with routed text.</text>
+  <text x="65" y="808" class="small">Auto-send OFF: press A to send.</text>
+  <text x="65" y="836" class="small">Auto-send ON in Settings: request one send.</text>
+  <text x="65" y="862" class="small">Close chat afterward only if the field is empty.</text>
+  <rect x="490" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
+  <text x="515" y="740" class="head">AUCTION HOUSE / SEARCH</text>
+  <text x="515" y="773" class="body">Already focused, empty text field.</text>
+  <text x="515" y="808" class="small">Original transcript; no chat prefix.</text>
+  <text x="515" y="836" class="small">Confirm the search manually.</text>
+  <text x="515" y="862" class="small">Search never auto-submits.</text>
+
+  <text x="40" y="924" class="small">Left-stick click cancels before delivery. Disable WoW’s right-stick ping binding.</text>
+  <text x="40" y="952" class="small">Install matching app + addon, then reload WoW once. Speech processing stays local.</text>
+  <text x="40" y="984" class="small">One-way handoff: app cannot confirm receipt or server delivery. Live client testing remains required.</text>
+</svg>
