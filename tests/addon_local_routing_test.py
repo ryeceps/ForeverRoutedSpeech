@@ -11,7 +11,7 @@ from lupa.lua51 import LuaRuntime
 
 root=Path(__file__).resolve().parents[1]
 lua=LuaRuntime(unpack_returned_tuples=True)
-lua.execute('''
+lua.execute(r'''
 UIParent={}; frames={}; allFrames={}; SlashCmdList={}; notices={}; bindings={}; now=100
 LE_PARTY_CATEGORY_INSTANCE=2; grouped=false; raided=false; instanced=false; guilded=true; channels={1,'General - Zone',false,2,'Trade - City',false,7,'Officers',false}
 function GetTime() return now end
@@ -25,6 +25,7 @@ function IsResting() return true end
 function InCombatLockdown() return false end
 function IsControlKeyDown() return true end
 function IsShiftKeyDown() return true end
+function IsAltKeyDown() return true end
 function GetCurrentKeyBoardFocus() return focused end
 function SetOverrideBindingClick(owner,priority,key,button) bindings[key]=button end
 function CreateFrame(kind,name)
@@ -43,12 +44,14 @@ function CreateFrame(kind,name)
  function f:GetText() return self.text end
  function f:SetText(text)
   self.text=self.maxBytes>0 and text:sub(1,self.maxBytes) or text
+  if self.maxLetters>0 and not self.text:find('[\128-\255]') then self.text=self.text:sub(1,self.maxLetters) end
   if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self) end
+  if self.hooks.OnTextChanged then self.hooks.OnTextChanged(self) end
  end
- function f:SetFocus() focused=self end; function f:ClearFocus() if focused==self then focused=nil end end
+ function f:SetFocus() error('addon must never set focus') end; function f:ClearFocus() if focused==self then focused=nil end end
  function f:HasFocus() return focused==self end
  function f:IsShown() return self.shown end; function f:Hide() self.shown=false; self:ClearFocus() end
- function f:Show() self.shown=true end; function f:IsObjectType(t) return self.kind==t end
+ function f:Show() error('addon must never show native UI') end; function f:IsObjectType(t) return self.kind==t end
  function f:GetAttribute(k) return self.attrs[k] end
  function f:SetAttribute(k,v) self.attrs[k]=v end
  function f:CreateTexture() error('Pixel bridge must not be created') end
@@ -69,7 +72,7 @@ search=CreateFrame('EditBox','AuctionSearch'); search:SetMaxLetters(63)
 search:SetScript('OnEnterPressed',function() searchSends=searchSends+1 end)
 DEFAULT_CHAT_FRAME={editBox=chat,AddMessage=function(_,s) notices[#notices+1]=s end}
 ChatFrameUtil={GetActiveWindow=function() return chat.shown and chat or nil end,
- GetLastActiveWindow=function() return chat end,OpenChat=function() chat:Show();chat:SetFocus() end,
+ GetLastActiveWindow=function() return chat end,OpenChat=function() error('addon must never open native chat') end,
  UpdateHeader=function() end}
 function reset()
  grouped=false;raided=false;instanced=false;guilded=true;blockSend=false;focused=nil
@@ -81,141 +84,112 @@ end
 ''')
 for file in ('LocalRouter.lua','Inbox.lua'):
     lua.execute((root/'addon/VoiceRouter'/file).read_text(encoding='utf-8'))
-lua.execute("allFrames[#allFrames].scripts.OnEvent(nil,'PLAYER_LOGIN')")
+lua.execute("for _,f in ipairs(allFrames) do if f.kind=='Frame' then adapter=f end end; adapter.scripts.OnEvent(nil,'PLAYER_LOGIN')")
 counter=0
-fixtures=[]
-def packet(text,hint='default',send=False,nonce=None):
+
+def control(text,hint='default',nonce=None):
     global counter
     if nonce is None: counter+=1; nonce=counter
-    b=text.encode('utf-8')
-    protected=f'/frs1 {nonce:032x} {hint} {int(send)} {len(b)} {text}'.encode('utf-8')
-    return f'/frs1 {nonce:032x} {hint} {int(send)} {len(b)} {zlib.adler32(protected):08x} {text}'
-def prepare():
-    lua.execute("frames.ForeverRoutedSpeechOpenInbox.scripts.OnClick()")
-def paste(raw,settle=True):
-    lua.globals().raw=raw
-    lua.execute("frames.ForeverRoutedSpeechInbox:SetText(raw)")
-    if settle: lua.execute('now=now+.15; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
-def deliver(text,hint='default',send=False):
-    prepare();raw=packet(text,hint,send);paste(raw);return raw
-def reset(): lua.execute('reset()')
-def check_chat(kind,text,channel=None):
+    header=f'frs2 {nonce:032x} {hint} {len(text.encode("utf-8"))}'
+    checksum=zlib.adler32((header+' '+text).encode('utf-8'))
+    return (header+f' {checksum:08x}').encode('ascii').hex()
+def signal(number): lua.execute(f'frames.ForeverRoutedSpeechControl{number}.scripts.OnClick()')
+def arm(hex):
+    signal(17)
+    for nibble in hex: signal(int(nibble,16)+1)
+    signal(18)
+def tick(seconds=.15): lua.execute(f'now=now+{seconds};adapter.scripts.OnUpdate()')
+def manual_chat(): lua.execute("chat.shown=true;focused=chat;adapter.scripts.OnUpdate()")
+def paste(text,settle=True):
+    lua.globals().raw=text
+    lua.execute('focused:SetText(raw)')
+    if settle: tick()
+def reset(): lua.execute("reset();adapter.scripts.OnEvent(nil,'PLAYER_LOGIN')")
+def deliver(text,hint='default'):
+    if not lua.eval('focused~=nil'): manual_chat() # player's native open action, not addon code
+    arm(control(text,hint));paste(text)
+def check(kind,text,channel=None):
     assert lua.globals().chat.chatType==kind and lua.globals().chat.text==text
-    if channel is not None: assert lua.globals().chat.channel==channel
     assert lua.globals().sends==0
+    if channel is not None: assert lua.globals().chat.channel==channel
 
-assert 'OnEnterPressed' not in (root/'addon/VoiceRouter/Inbox.lua').read_text(), 'addon must never invoke native send'
-inbox=lua.globals().frames['ForeverRoutedSpeechInbox']
-assert inbox.alpha==0 and inbox.width==1 and inbox.height==1
-assert inbox.font=='GameFontNormal' and inbox.shown, 'hidden-by-alpha inbox still has native font and is shown for keyboard focus'
+source=(root/'addon/VoiceRouter/Inbox.lua').read_text()
+for forbidden in ('SetFocus','ClearFocus','OpenChat','OnEnterPressed','SlashCmdList','CreateFrame("EditBox"'):
+    assert forbidden not in source, f'forbidden native UI path: {forbidden}'
+assert lua.globals().frames['ForeverRoutedSpeechInbox'] is None
 assert lua.globals().frames['VoiceRouterStatusStrip'] is None
-assert lua.globals().bindings['CTRL-SHIFT-F10']=='ForeverRoutedSpeechOpenInbox'
+assert lua.globals().bindings['CTRL-ALT-SHIFT-F17']=='ForeverRoutedSpeechControl17'
+assert lua.globals().bindings['CTRL-ALT-SHIFT-F19']=='ForeverRoutedSpeechControl19'
 toc=(root/'addon/VoiceRouter/VoiceRouter.toc.in').read_text()
-assert 'LocalRouter.lua' in toc and 'Inbox.lua' in toc and '\nVoiceRouter.lua' not in toc
-assert '\nPreview.lua' not in toc and 'SavedVariables:' not in toc
-bindings_xml=ET.parse(root/'addon/VoiceRouter/Bindings.xml').getroot()
-assert bindings_xml.tag=='{http://www.blizzard.com/wow/ui/}Bindings' and len(bindings_xml)==0, 'loader compatibility file must contain no bindings'
+assert 'LocalRouter.lua' in toc and 'Inbox.lua' in toc and '\nVoiceRouter.lua' not in toc and 'SavedVariables:' not in toc
+binding=ET.parse(root/'addon/VoiceRouter/Bindings.xml').getroot()
+assert binding.tag=='{http://www.blizzard.com/wow/ui/}Bindings' and len(binding)==0
 if os.name=='nt':
     with tempfile.TemporaryDirectory(prefix='frs-addon-install-') as folder:
-        target=Path(folder)/'VoiceRouter'; target.mkdir()
-        for old in ('Bindings.xml','VoiceRouter.lua','Preview.lua'):
-            (target/old).write_text('obsolete fixture',encoding='utf-8')
-        subprocess.run(['powershell','-NoProfile','-File',str(root/'scripts/Install-Addon.ps1'),
-                        '-AddOnsDirectory',folder,'-Interface','16001'],check=True,capture_output=True)
-        for name in ('Bindings.xml','Inbox.lua','LocalRouter.lua'):
-            assert (target/name).read_bytes()==(root/'addon/VoiceRouter'/name).read_bytes(), name
+        target=Path(folder)/'VoiceRouter';target.mkdir()
+        for old in ('Bindings.xml','VoiceRouter.lua','Preview.lua'): (target/old).write_text('obsolete fixture')
+        subprocess.run(['powershell','-NoProfile','-File',str(root/'scripts/Install-Addon.ps1'),'-AddOnsDirectory',folder,'-Interface','16001'],check=True,capture_output=True)
+        for name in ('Bindings.xml','Inbox.lua','LocalRouter.lua'): assert (target/name).read_bytes()==(root/'addon/VoiceRouter'/name).read_bytes()
         assert not (target/'VoiceRouter.lua').exists() and not (target/'Preview.lua').exists()
-        assert 'Bindings.xml' not in (target/'VoiceRouter.toc').read_text(encoding='utf-8-sig')
-context=lua.globals().VoiceRouterLocal.context()
 
-# A real edit box may emit several OnTextChanged callbacks during one paste.
-# Never reject the initial slash/header before the rest of the packet arrives.
-reset();prepare();fragmented=packet('In General, fragmented paste',send=True)
-for end in (1,12,60,len(fragmented)):
-    paste(fragmented[:end],settle=False)
-    lua.execute('now=now+.05; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
-    assert lua.eval('focused==frames.ForeverRoutedSpeechInbox'), 'partial paste must retain inbox focus until settled'
-    assert lua.globals().sends==0
-lua.execute('now=now+.15; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()')
-assert lua.globals().sends==0 and lua.globals().chat.text=='fragmented paste'
-assert context.zone=='Ironforge' and context.city and context.resting
-lua.execute("function GetZoneText() return 'Goldshire' end")
-context=lua.globals().VoiceRouterLocal.context()
-assert context.city is None and context.resting, 'resting in an inn does not imply a city'
-lua.execute("function GetZoneText() return 'Ironforge' end")
-reset(); deliver('Hey guys');check_chat('SAY','Hey guys')
-reset(); lua.execute('grouped=true');deliver('Hey guys');check_chat('PARTY','Hey guys')
-reset();lua.execute('grouped=true;raided=true');deliver('Hey guys');check_chat('RAID','Hey guys')
-reset();lua.execute('grouped=true;raided=true;instanced=true');deliver('Hey guys');check_chat('INSTANCE_CHAT','Hey guys')
-reset();lua.execute('grouped=true');deliver('Tell everyone around me we need help');check_chat('SAY','we need help')
-reset();deliver('In General, hey guys');check_chat('CHANNEL','hey guys',1)
-reset();lua.execute("channels={6,'General - Ironforge',false,8,'Trade - City',false}")
-deliver('Ask in trade selling potions');check_chat('CHANNEL','selling potions',8)
-reset();deliver('In Officers, meeting tonight');check_chat('CHANNEL','meeting tonight',7)
-reset();lua.execute("channels={}");deliver('In General, hey guys',send=True)
-assert lua.globals().sends==0 and lua.globals().chat.text=='' and not lua.globals().chat.shown
-reset();lua.execute('guilded=false;grouped=true');deliver('Tell guild hello',send=True)
-assert lua.globals().sends==0 and not lua.globals().chat.shown
-reset();lua.execute('guilded=false;grouped=true');deliver('Hello friends','i:guild');check_chat('PARTY','Hello friends')
-reset();lua.execute('grouped=true');deliver("I mentioned the guild yesterday");check_chat('PARTY','I mentioned the guild yesterday')
-reset();lua.execute('grouped=true');deliver("Don't tell guild we need help");check_chat('PARTY',"Don't tell guild we need help")
-reset();deliver('In General, hi','m:guild');check_chat('GUILD','hi')
-reset();deliver('Hello','m:channel:7');check_chat('CHANNEL','Hello',7)
-reset();lua.execute("grouped=true; chat.shown=true; chat.chatType='GUILD';focused=chat")
-deliver('Hello');check_chat('GUILD','Hello')
-reset();lua.execute("chat.shown=true;chat.chatType='WHISPER';focused=chat")
-deliver('Hello',send=True);assert lua.globals().sends==0 and lua.globals().chat.text==''
-reset();prepare();lua.execute('grouped=true;raided=true');paste(packet('Group changed'));check_chat('RAID','Group changed')
-reset();lua.execute("focused=search");deliver('Stormwind',send=True)
-assert lua.globals().search.text=='Stormwind' and lua.globals().searchSends==0 and lua.globals().sends==0 and not lua.globals().chat.shown
-reset();lua.execute("chat.shown=true;focused=chat;chat.text='Existing draft'");deliver('New text',send=True)
-assert lua.globals().chat.text=='Existing draft' and lua.globals().sends==0
-reset();lua.execute("focused=search;search.text='Existing query'");deliver('New query',send=True)
-assert lua.globals().search.text=='Existing query' and lua.globals().searchSends==0
-reset();lua.execute('focused=search');deliver('a'*64);assert lua.globals().search.text==''
-reset();prepare();paste(packet('Hello')[:-1]);assert lua.globals().sends==0 and not lua.globals().chat.shown
-reset();prepare();paste(packet('Hello').replace(' default 0 ',' default 1 '));assert lua.globals().sends==0 and not lua.globals().chat.shown
-reset();prepare();lua.execute('now=now+4; frames.ForeverRoutedSpeechInbox.scripts.OnUpdate()');paste(packet('Late',send=True))
-assert lua.globals().sends==0 and not lua.globals().chat.shown
-reset();prepare();lua.execute("frames.ForeverRoutedSpeechCancelInbox.scripts.OnClick()");paste(packet('Cancelled',send=True))
-assert lua.globals().sends==0 and not lua.globals().chat.shown
-reset();raw=deliver('In General, hello',send=True)
-assert lua.globals().sends==0 and lua.globals().chat.text=='hello' and lua.globals().chat.channel==1 and lua.globals().chat.shown
-reset();prepare();paste(raw);assert lua.globals().sends==0
-reset();lua.execute("focused=search; function search:IsForbidden() return true end");deliver('Restricted',send=True)
-assert lua.globals().search.text=='' and lua.globals().sends==0
-lua.execute('search.IsForbidden=nil')
-lua.execute("allFrames[#allFrames].scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN','VoiceRouter','SendChatMessage()')")
-assert 'SendChatMessage()' in lua.globals().notices[len(lua.globals().notices)]
-reset();lua.execute('blockSend=true');deliver('Hello',send=True)
-assert lua.globals().sends==0 and lua.globals().chat.text=='Hello' and lua.globals().chat.shown
-reset()
-lua.execute('''function ChatFrameUtil.OpenChat()
- chat:Show();chat:SetFocus()
- allFrames[#allFrames].scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN','VoiceRouter','SetPreferredGamepadInteractTarget()')
-end''')
+# Exact regression: no addon-originated native focus/open operations are available.
+reset();arm(control('Closed'));assert not lua.globals().chat.shown and lua.globals().focused is None
+reset();deliver('Hey guys');check('SAY','Hey guys')
+for flags,kind in [('grouped=true','PARTY'),('grouped=true;raided=true','RAID'),('grouped=true;instanced=true','INSTANCE_CHAT')]:
+    reset();lua.execute(flags);deliver('Hey guys');check(kind,'Hey guys')
+reset();lua.execute('grouped=true');deliver('Tell everyone around me we need help');check('SAY','we need help')
+reset();deliver('In General, hey guys');check('CHANNEL','hey guys',1)
+reset();lua.execute("channels={6,'General - Ironforge',false,8,'Trade - City',false}");deliver('Ask in trade selling potions');check('CHANNEL','selling potions',8)
+reset();deliver('In Officers, meeting tonight');check('CHANNEL','meeting tonight',7)
+reset();lua.execute('channels={}');deliver('In General, hello');assert lua.globals().chat.text==''
+reset();lua.execute('guilded=false;grouped=true');deliver('Hello','i:guild');check('PARTY','Hello')
+reset();deliver('In General, hi','m:guild');check('GUILD','hi')
+reset();deliver('Hello','m:channel:7');check('CHANNEL','Hello',7)
+for text in ('I mentioned the guild yesterday',"Don't tell guild we need help"):
+    reset();lua.execute('grouped=true');deliver(text);check('PARTY',text)
+reset();manual_chat();lua.execute("chat.chatType='GUILD'");deliver('Hello');check('GUILD','Hello')
+reset();manual_chat();arm(control('Group changed'));lua.execute('grouped=true;raided=true');paste('Group changed');check('RAID','Group changed')
+reset();lua.execute('focused=search');deliver('Tell guild Stormwind');assert lua.globals().search.text=='Tell guild Stormwind' and lua.globals().searchSends==0 and not lua.globals().chat.shown
+for field,old in [('chat','Existing draft'),('search','Existing query')]:
+    reset();lua.globals().old=old;lua.execute(f'{field}.shown=true;focused={field};{field}.text=old')
+    arm(control('New text'));paste(old+'New text');assert lua.globals()[field].text==old
+reset();manual_chat();text='In General, fragmented paste';arm(control(text))
+for end in (1,5,len(text)):
+    paste(text[:end],False);tick(.05);assert lua.globals().sends==0
+    assert lua.eval('focused==chat')
+tick();check('CHANNEL','fragmented paste',1)
+reset();manual_chat();arm(control('Hello'));paste('Other');assert lua.globals().chat.text=='Other' and lua.globals().chat.chatType=='SAY'
+reset();manual_chat();arm(control('Hello')[:-2]+'00');paste('Hello');assert lua.globals().sends==0
+reset();manual_chat();arm(control('In General, hello'));tick(4);paste('In General, hello');check('SAY','In General, hello')
+reset();manual_chat();arm(control('In General, cancelled'));signal(19);paste('In General, cancelled');check('SAY','In General, cancelled')
+reset();manual_chat();arm(control('Moved'));lua.execute('focused=search');paste('Moved');assert lua.globals().chat.text=='' and lua.globals().search.text=='Moved'
+# Focused native fields can consume global bindings; test the key-event dispatch too.
+reset();manual_chat();encoded=control('In General, key-event route')
+for number in [17]+[int(n,16)+1 for n in encoded]+[18]:
+    lua.globals().control_key=f'F{number}'
+    lua.execute('chat.hooks.OnKeyDown(chat,control_key)')
+paste('In General, key-event route');check('CHANNEL','key-event route',1)
+reset();deliver('Hello 世界');check('SAY','Hello 世界')
+reset();manual_chat();lua.execute("function chat:IsForbidden() return true end");arm(control('Restricted'));assert lua.globals().chat.text=='';lua.execute('chat.IsForbidden=nil')
+reset();manual_chat();arm(control('In General, blocked'))
 before=len(lua.globals().notices)
-deliver('Blocked preparation')
-assert lua.globals().chat.text=='' and lua.globals().sends==0
-for n in range(before+1,len(lua.globals().notices)+1):
-    assert 'draft ready' not in lua.globals().notices[n], 'a protected-action refusal must never report readiness'
-lua.execute('function ChatFrameUtil.OpenChat() chat:Show();chat:SetFocus() end')
-reset();deliver('Hello 世界');check_chat('SAY','Hello 世界')
-reset();lua.execute('chat:SetMaxBytes(3)');deliver('Hello',send=True)
-assert lua.globals().sends==0 and lua.globals().chat.text==''
-reset();lua.execute("chat:SetMaxBytes(3); function chat:GetMaxBytes() return 0 end")
-deliver('Hello',send=True);assert lua.globals().sends==0 and lua.globals().chat.text=='', 'unexpected truncation rolls back only owned partial text'
-lua.execute("function chat:GetMaxBytes() return self.maxBytes end")
-reset();lua.execute('IsInGuild=nil');deliver('No API',send=True);assert lua.globals().sends==0
-print('PASS: actual Lua inbox and routing: no visible strip, group transitions, live channel IDs, explicit/custom/manual routes, unavailable targets, search, occupied fields, corruption, expiry, cancellation, replay, Unicode and manual-only send (including legacy send flags). Live Forever APIs remain unverified.')
+lua.execute("adapter.scripts.OnEvent(nil,'ADDON_ACTION_FORBIDDEN','VoiceRouter','SetPreferredGamepadInteractTarget()')")
+paste('In General, blocked');assert lua.globals().sends==0 and lua.globals().chat.chatType=='SAY'
+assert all('draft ready' not in lua.globals().notices[n] for n in range(before+1,len(lua.globals().notices)+1))
+# Native field caps remain untouched; oversized/truncated paste never gets a ready notice.
+reset();lua.execute('focused=search');raw='x'*64;before=len(lua.globals().notices);deliver(raw)
+assert lua.globals().search.maxLetters==63 and lua.globals().searchSends==0 and lua.globals().search.text=='x'*63
+assert 'text ready' not in lua.globals().notices[len(lua.globals().notices)]
+# Mock enforces bytes rather than letters; reproduce native truncation explicitly.
+reset();manual_chat();lua.execute('chat:SetMaxBytes(3)');arm(control('Hello'));paste('Hello')
+assert lua.globals().sends==0 and 'draft ready' not in lua.globals().notices[len(lua.globals().notices)]
 
-# Cross-language vectors: C# must emit exactly the packets Lua accepts.
-for index,(text,hint,send) in enumerate([('Hello 世界','default',False),('In General, hey guys','default',True),('Guildies hello','i:guild',False)],1):
-    raw=packet(text,hint,send,nonce=index)
-    decoded=lua.globals().VoiceRouterLocal.decode(raw)
-    if isinstance(decoded,tuple): decoded=decoded[0]
-    assert decoded.text==text
-    fixtures.append(dict(text=text,hint=hint,send=send,nonce=f'{index:032x}',packet=raw))
-path=root/'tests/fixtures/addon-envelope.json'
-if '--write-fixture' in sys.argv: path.write_text(json.dumps(fixtures,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
-else: assert json.loads(path.read_text(encoding='utf-8'))==fixtures,'Addon envelope fixture must be reviewed/regenerated'
+vectors=[]
+for index,(text,hint) in enumerate([('Hello 世界','default'),('In General, hey guys','default'),('Guildies hello','i:guild'),('Stormwind','m:channel:9999')],1):
+    encoded=control(text,hint,index);decoded=lua.globals().VoiceRouterLocal.control(encoded)
+    assert lua.globals().VoiceRouterLocal.matches(decoded,text)
+    vectors.append(dict(text=text,hint=hint,nonce=f'{index:032x}',hex=encoded))
+path=root/'tests/fixtures/addon-control.json'
+if '--write-fixture' in sys.argv: path.write_text(json.dumps(vectors,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+else: assert json.loads(path.read_text(encoding='utf-8'))==vectors
+print('PASS: focus-preserving adapter: zero native focus/open/send calls; live routes, field preservation, checksummed control/plain paste, corruption, cancellation, expiry, Unicode, limits, protected-action refusal and installer upgrade.')

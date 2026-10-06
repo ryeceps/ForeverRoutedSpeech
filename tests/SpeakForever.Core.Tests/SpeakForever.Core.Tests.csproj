@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\app\Core\SpeakForever.Core.csproj" />
     <None Include="../fixtures/addon-bridge-geometry.json" Link="addon-bridge-geometry.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../fixtures/addon-control.json" Link="addon-control.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../fixtures/addon-envelope.json" Link="addon-envelope.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

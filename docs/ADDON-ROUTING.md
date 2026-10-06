@@ -1,49 +1,62 @@
-# One-way draft handoff, local game context
+# Native field routing, no addon focus changes
 
-The old screen bridge is replaced in the default app/addon path. There is no visible addon box and no reverse context feed. The app produces text and intent hints; the addon owns live-context decisions.
+The companion produces speech text and intent hints. The addon reads live context inside WoW. There is no status strip, screen capture, hidden EditBox, reverse context feed or calibration.
 
 ```mermaid
 flowchart LR
-  Pad[Right stick: record / finish] --> Audio[Local Whisper Turbo]
-  Audio --> Intent[Text-only fastText]
-  Intent --> Preview[Editable companion draft]
-  Preview --> Click[Final right-stick click]
-  Click --> Inbox[Invisible addon inbox: validated packet]
-  Context[Live WoW group / guild / channels / location] --> Route[Addon destination resolver]
-  Inbox --> Route
-  Route --> Chat[Native chat draft]
-  Route --> Search[Already focused empty text field]
-  Chat --> Send[Player presses A to send]
-  Search --> Confirm[Manual search confirmation]
+  RS[Right stick: record] --> Whisper[Local Whisper Turbo]
+  Pause[Pause or second click: finish] --> Whisper
+  Whisper --> Model[Text-only fastText hint]
+  Model --> Preview[Editable draft and plain clipboard]
+  Preview --> Native[Player opens native chat]
+  Native --> Paste[Automatic metadata keys and plain paste]
+  Preview --> SearchClick[RS in focused empty search field]
+  SearchClick --> Paste
+  Paste --> Resolve[Addon validates and routes]
+  Context[Live group / guild / joined channels] --> Resolve
+  Resolve --> Field[Native chat or search field]
+  Field --> Confirm[Player A: send or search]
 ```
 
-## Transport
+## Controller trigger
 
-`AddonEnvelope` serializes `/frs1 <32-hex nonce> <hint> <send 0/1> <UTF8 byte count> <8-hex Adler32> <original message>`. Hints distinguish inferred (`i:guild`) from manual (`m:guild`, `m:channel:7`) requests. The transcript remains intact until Lua can resolve spoken explicit channel names against live joined channels. There is no executable Lua or arbitrary command in a packet.
+The companion observes the same native open-chat chord that WoW sees (default LB + RB + Down), or selection of Chat from the native radial menu. If a draft is already ready, that deliberate action requests one paste automatically. It does not open chat itself. Returning from chat menus, pressing Send, movement and transcription completion do not trigger delivery. Opening a radial menu preserves a ready draft. Opening chat before transcription finishes does not queue a future paste; use RS once ready instead.
 
-The clipboard holds human-readable text when a draft is prepared. On delivery, `Session.DeliverToAddonAsync` replaces only its owned clipboard with a packet, invokes `Ctrl+Shift+F10`, waits 120 ms and requests one Ctrl+V. It keeps the packet stable until the next deliberate copy: SendInput queues input and does not acknowledge WoW's clipboard read. The next prepared draft copies readable text again. `AddonDeliveryWorkflow` rechecks game/clipboard/modifiers before both actions; cancellation attempts the internal cancel shortcut and the addon also expires an unused inbox after three seconds. No external Enter is sent by this workflow.
+A ready draft can also be pasted with RS into a field the player has already focused. LS cancels before paste. Once a native draft exists, use WoW's Back control to dismiss it; LS does not operate native focus. Submission and normal chat closing belong to the game's A action.
 
-The inbox validates after 100 ms without text changes, rather than on the first OnTextChanged callback. Fragmented paste events retain inbox focus until settled. Incomplete or corrupted packets still refuse delivery after settling; the three-second timeout remains unchanged.
+## Control signal and plain clipboard
 
-The addon assigns its internal shortcuts through override click bindings. A transparent 1 × 1 EditBox takes keyboard focus only during delivery. The addon remembers the previously focused control and never pastes protocol metadata directly into its final target. Occupied or unsupported targets still consume/refuse the packet in the inbox, protecting existing text. It remembers up to 128 recent packet IDs in memory to reject duplicates; there is no retained transcript history.
+`AddonControl` encodes ASCII metadata: `frs2 <32-hex nonce> <hint> <UTF8 byte count> <8-hex Adler32>`. The checksum covers the header plus the original speech. Hints distinguish inferred (`i:guild`) from manual (`m:guild`, `m:channel:7`) routes. There is no send flag or executable command.
 
-## Local resolution
+The companion holds Ctrl + Alt + Shift for a short internal function-key sequence. F17 begins, F1 through F16 encode hexadecimal nibbles, F18 commits, and F19 cancels. Only metadata travels this way; the clipboard remains the original plain transcript throughout. The addon assigns its internal bindings automatically and observes focused edit-box key events. These shortcuts and actual client dispatch still require Forever acceptance testing.
 
-At receipt, Lua reads current group/guild availability, joined channel IDs/names, zone/subzone, city-map/capital status and resting status. Resting in an inn does not imply a city; being in a city does not automatically make speech public. Explicit audience instructions and manual corrections outrank model hints. Unavailable inferred hints fall back to current supported chat/group defaults; unavailable explicit/manual requests refuse instead. The addon preserves an already open supported chat audience, otherwise defaults Instance → Raid → Party → retained solo audience → Say.
+`AddonDeliveryWorkflow` waits 120 ms before the control signal when native chat is opening, then another 120 ms before paste. It checks foreground game, clipboard ownership and modifiers before each input step. Cancellation during the initial wait causes no input. Partial Windows input never retries. The waits allow event processing; they are not receipt acknowledgements.
 
-Joined names and numbers are resolved at delivery. General/Trade are not hardcoded to 1/2. Custom channels have explicit names or manual numeric selection, never automatic inferred intent. Search/text fields bypass audience parsing and keep the complete transcript as plain text. The native chat header is the final audience indicator; the companion preview is a suggestion, not a live acknowledgement.
+## Focus-preserving adapter
 
-## Sending and failure limits
+`Inbox.lua` retains its filename for packaging compatibility, but creates no EditBox. It snapshots the already shown, unrestricted focused native field, validates the metadata frame, and waits for 100 ms without text changes after plain paste. Transactions expire after three seconds; up to 128 recent nonces prevent replay.
 
-Lua opens/populates native chat and leaves submission to the player's A press. It never invokes the Enter handler or submits chat/search, including when an older packet requests send. The retired auto-send setting is ignored. A protected-action warning is client evidence, not proof of a TOS decision; if draft preparation itself is blocked, this handoff also needs replacing.
+The addon never invokes native open, focus, clear-focus, hide, Enter or Send handlers. It exposes no addon slash commands because Forever's native cleanup after addon slash callbacks can also taint gamepad focus. It changes only the accepted chat destination/header and exact validated body. Ordinary typing and unrelated pastes remain untouched when no transaction is armed.
 
-This is a **one-way** handoff. The companion cannot verify that the addon received the shortcut, that its invisible edit box obtained focus, or that the server accepted a message. Missing addon/binding/focus support must be diagnosed on the client; the app reports a delivery request rather than a successful send. The current tests establish Lua/control-flow behavior, not Forever protected-input compatibility. The visible bridge could provide feedback; removing it trades that feedback for a simpler UI. Do not add a timed blind Enter as a substitute.
+An occupied field is restored to its original text only if the exact checksummed incoming body can be identified. Corruption, changed focus, cancellation and restricted controls refuse routing. The companion caps speech at 200 UTF-8 bytes. A native field may truncate paste to its own smaller cap; the adapter reports the mismatch and does not mark it ready or submit. It does not change native field limits or silently reconstruct missing characters.
+
+## Live resolution
+
+At delivery, Lua reads group/guild availability, joined channel IDs/names, zone/subzone, city-map/capital and resting status. Being in a city alone does not imply public intent. Explicit routing instructions and manual corrections outrank qualified model hints. Unavailable inferred hints fall back; unavailable explicit/manual requests refuse. A newly opened Say field allows ordinary speech to use Instance → Raid → Party → Say. An already selected supported Guild or numbered channel is retained unless overridden.
+
+General and Trade use current joined IDs, never fixed 1/2 assumptions. Custom channels support explicit names and manual numbers, not inferred intent. Search receives the complete original transcript without stripping audience phrases. The native chat header is the audience indicator; the companion preview remains a suggestion.
+
+## Evidence and limits
+
+The user's client reported `SetPreferredGamepadInteractTarget()` as forbidden. Production-path Lua tests make native focus/open calls throw and prove the replacement never calls them. This demonstrates removal of that call chain in our implementation, not live client success or Blizzard approval. Destination/header changes and function-key transport still need a player check. A protected-action event stops routing and suppresses false readiness; no automatic retry or send occurs.
+
+This is a one-way transport. The app reports a paste request, not verified receipt, routing or server delivery. If native bindings fail, ordinary speech remains on the clipboard. Review the actual native field before A. Missing addon support can leave plain speech, including spoken routing words, unprocessed.
 
 ## Regression checks
 
-`tests/addon_local_routing_test.py` runs the actual shipped Lua modules and inbox callbacks. It checks zero-alpha/non-rendered inbox, TOC exclusion of old renderer/preview, binding setup, explicit overrides, live channel renumbering, groups changing between preparation and delivery, inferred unavailable fallback, explicit unavailable refusal, custom/manual routes, current chat, unknown audience, occupied fields, Unicode/limits, partial packets, cancellation, expiry, duplicate IDs, search isolation and optional send/refusal.
+`tests/addon_local_routing_test.py` executes shipped Lua with native focus/open methods forbidden. It covers live channel renumbering, group transitions, explicit/custom/manual routes, occupied/search fields, fragmented paste, UTF-8/checksum mismatch, expiry, cancellation, restricted controls and protected-action refusal. Installer upgrade checks remove legacy rendering files and retain the empty Bindings.xml compatibility stub.
 
-`AddonDeliveryTests` checks C# packets against Lua-accepted fixtures, plain clipboard drafts without capture, invalid payloads, text-only intent features, Guild-address gating and the prepare/paste/cancel sequence. `tests/Routing.Smoke` uses the actual native fastText library/model. CI runs Lua and training checks plus C# suites. Legacy pixel tests/fixtures remain historical compatibility coverage and are not loaded by the addon.
+C# tests compare `AddonControl` to Lua-accepted fixtures and test native-open settling, cancellation before all input, guarded single paste and no Enter. Chat-panel tests distinguish explicit native opening from menu return and Send. Native smoke checks use the actual fastText model. Legacy pixel and `/frs1` packet fixtures are historical coverage, not current transport.
 
 ```powershell
 python tests/addon_local_routing_test.py
@@ -53,4 +66,4 @@ dotnet run --project tests/VoiceRouter.Tests -c Release
 dotnet run --project tests/Routing.Smoke -c Release -- dist/ForeverRoutedSpeech
 ```
 
-The public Preview 2 archive predates this protocol. Upgrade app and addon together. Installation needs one normal UI reload/relog, not calibration or SavedVariables verification.
+Upgrade companion and addon together, then reload WoW once. The public Preview 2 archive predates this protocol.

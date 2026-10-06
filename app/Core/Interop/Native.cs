@@ -115,19 +115,22 @@ public static partial class Native
     }
 
     public static string? ValidateAddonDelivery(uint version) => CheckInput(version);
-    public static string? PrepareAddonInbox(uint version,out bool attempted) => AddonShortcut(version,0x79,out attempted);
-    public static string? CancelAddonInbox(uint version,out bool attempted) => AddonShortcut(version,0x78,out attempted);
-    static string? AddonShortcut(uint version,ushort key,out bool attempted)
+    public static string? PrepareAddonControl(uint version,ushort[] control,out bool attempted) => AddonKeys(version,control,out attempted);
+    public static string? CancelAddonControl(uint version,out bool attempted) => AddonKeys(version,[VoiceRouter.Core.AddonControl.CancelKey],out attempted);
+    static string? AddonKeys(uint version,ushort[] control,out bool attempted)
     {
         attempted=false;
         if(CheckInput(version) is { } blocked) return blocked;
-        PasteInput[] keys=[new(){Type=1,Key=0x11},new(){Type=1,Key=0x10},new(){Type=1,Key=key},
-            new(){Type=1,Key=key,Flags=2},new(){Type=1,Key=0x10,Flags=2},new(){Type=1,Key=0x11,Flags=2}];
+        var keys=new List<PasteInput> {new(){Type=1,Key=0x11},new(){Type=1,Key=0x10},new(){Type=1,Key=0x12}};
+        foreach(ushort key in control) {keys.Add(new(){Type=1,Key=key});keys.Add(new(){Type=1,Key=key,Flags=2});}
+        keys.Add(new(){Type=1,Key=0x12,Flags=2});keys.Add(new(){Type=1,Key=0x10,Flags=2});keys.Add(new(){Type=1,Key=0x11,Flags=2});
         attempted=true;
-        if(SendInput((uint)keys.Length,keys,Marshal.SizeOf<PasteInput>())==keys.Length) return null;
-        PasteInput[] release=[new(){Type=1,Key=key,Flags=2},new(){Type=1,Key=0x10,Flags=2},new(){Type=1,Key=0x11,Flags=2}];
-        SendInput((uint)release.Length,release,Marshal.SizeOf<PasteInput>());
-        return "Windows did not accept the addon shortcut. No input was retried.";
+        if(SendInput((uint)keys.Count,[..keys],Marshal.SizeOf<PasteInput>())==keys.Count) return null;
+        // Release only. Never repeat an incomplete transaction or leave a control key held.
+        var release=control.Distinct().Select(key=>new PasteInput{Type=1,Key=key,Flags=2}).ToList();
+        foreach(ushort key in new ushort[]{0x12,0x10,0x11}) release.Add(new(){Type=1,Key=key,Flags=2});
+        SendInput((uint)release.Count,[..release],Marshal.SizeOf<PasteInput>());
+        return "Windows did not accept the routing control signal. No input was retried.";
     }
 
     /// <summary>Requests Enter only to open a confirmed closed chat; never to submit text.</summary>

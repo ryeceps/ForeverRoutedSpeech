@@ -17,6 +17,21 @@ public class AddonDeliveryTests
         foreach(var v in vectors) Assert.Equal(v.Packet,AddonEnvelope.Encode(v.Text,v.Hint,v.Send,v.Nonce));
     }
 
+    sealed record ControlVector(string Text,string Hint,string Nonce,string Hex);
+    [Fact]
+    public void ControlSignalMatchesActualLuaAcceptedVectors()
+    {
+        var vectors=System.Text.Json.JsonSerializer.Deserialize<ControlVector[]>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"addon-control.json")),JsonOptions)!;
+        foreach(var v in vectors)
+        {
+            Assert.Equal(v.Hex,AddonControl.Encode(v.Text,v.Hint,v.Nonce));
+            var keys=AddonControl.Keys(v.Text,v.Hint,v.Nonce);
+            Assert.Equal(AddonControl.BeginKey,keys[0]); Assert.Equal(AddonControl.CommitKey,keys[^1]);
+            Assert.All(keys.Skip(1).SkipLast(1),key=>Assert.InRange(key,(ushort)0x70,(ushort)0x7f));
+            Assert.DoesNotContain((ushort)0x0d,keys); Assert.DoesNotContain((ushort)0x1b,keys);
+        }
+    }
+
     [Theory]
     [InlineData("", "default")]
     [InlineData("/logout", "default")]
@@ -65,12 +80,32 @@ public class AddonDeliveryTests
     public void GuildSuggestionRequiresAnAudienceAddress(string text,bool expected) => Assert.Equal(expected,Features.HasGuildAddress(text));
 
     [Fact]
-    public async Task FinalClickPreparesInboxThenPastesOnceWithoutEnter()
+    public async Task NativeOpeningSettlesBeforeFocusSnapshotAndNeverSends()
+    {
+        var events=new List<string>();
+        var result=await AddonDeliveryWorkflow.RunAsync(()=>{events.Add("check");return null;},action=>{events.Add(action.ToString());return(null,true);},CancellationToken.None,_=>{events.Add("settle");return Task.CompletedTask;},nativeChatOpening:true);
+        Assert.Null(result.Error);
+        Assert.Equal(["settle","check","PrepareControl","settle","check","Paste"],events);
+    }
+
+    [Fact]
+    public async Task CancelWhileNativeChatOpensPreventsAllInput()
+    {
+        using var cts=new CancellationTokenSource();
+        var actions=new List<AddonInput>();
+        var result=await AddonDeliveryWorkflow.RunAsync(()=>null,action=>{actions.Add(action);return(null,true);},cts.Token,_=>{cts.Cancel();return Task.CompletedTask;},nativeChatOpening:true);
+        Assert.False(result.Attempted);
+        Assert.Empty(actions);
+        Assert.NotNull(result.Error);
+    }
+
+    [Fact]
+    public async Task FinalClickPreparesControlThenPastesOnceWithoutEnter()
     {
         var actions=new List<AddonInput>();
         var result=await AddonDeliveryWorkflow.RunAsync(()=>null,action=>{actions.Add(action);return(null,true);},CancellationToken.None,_=>Task.CompletedTask);
         Assert.Null(result.Error);
-        Assert.Equal([AddonInput.PrepareInbox,AddonInput.Paste],actions);
+        Assert.Equal([AddonInput.PrepareControl,AddonInput.Paste],actions);
     }
 
     [Fact]
@@ -79,17 +114,17 @@ public class AddonDeliveryTests
         var actions=new List<AddonInput>(); int reads=0;
         var result=await AddonDeliveryWorkflow.RunAsync(()=>++reads==1 ? null : "Clipboard changed",action=>{actions.Add(action);return(null,true);},CancellationToken.None,_=>Task.CompletedTask);
         Assert.Equal("Clipboard changed",result.Error);
-        Assert.Equal([AddonInput.PrepareInbox],actions);
+        Assert.Equal([AddonInput.PrepareControl],actions);
     }
 
     [Fact]
-    public async Task CancelAfterPreparingInboxClosesItWithoutPaste()
+    public async Task CancelAfterPreparingControlDisarmsWithoutPaste()
     {
         using var cts=new CancellationTokenSource();
         var actions=new List<AddonInput>();
         var result=await AddonDeliveryWorkflow.RunAsync(()=>null,action=>{actions.Add(action);return(null,true);},cts.Token,_=>{cts.Cancel();return Task.CompletedTask;});
         Assert.NotNull(result.Error);
-        Assert.Equal([AddonInput.PrepareInbox,AddonInput.CancelInbox],actions);
+        Assert.Equal([AddonInput.PrepareControl,AddonInput.CancelControl],actions);
     }
 
     [Fact]
@@ -98,6 +133,6 @@ public class AddonDeliveryTests
         var actions=new List<AddonInput>();
         var result=await AddonDeliveryWorkflow.RunAsync(()=>null,action=>{actions.Add(action);return("Partial input",true);},CancellationToken.None,_=>Task.CompletedTask);
         Assert.Equal("Partial input",result.Error);
-        Assert.Equal([AddonInput.PrepareInbox],actions);
+        Assert.Equal([AddonInput.PrepareControl],actions);
     }
 }

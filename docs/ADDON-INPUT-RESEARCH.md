@@ -1,5 +1,8 @@
 # Chat input research — October 6, 2026
 
+The current replacement is described in [native-field routing](ADDON-ROUTING.md). It uses no hidden edit box or addon-originated native focus/open operation. Native chat opening by the player triggers automatic paste of an already ready draft; sending stays manual. Function-key transport and destination/header changes require Forever player validation. Source precedents below explain the design, not a compatibility or policy guarantee.
+
+
 ## Confirmed function from the player's screenshot
 
 The screenshot reports `SetPreferredGamepadInteractTarget()` with `ADDON_ACTION_FORBIDDEN`, followed by an incorrect "say draft ready" notice. This identifies a gamepad focus/binding restriction, not a SendChatMessage refusal.
@@ -27,7 +30,7 @@ The useful distinction is preparing text versus submitting a message. A callback
 
 [ChatFrameUtil](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua) separates opening/prefilling chat from submission. [ChatFrameEditBox](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua) performs chat submission through its edit-box send path. [Generated ChatInfo API documentation](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua) marks `SendChatMessage` as restricted and specifies taint-related argument requirements. These are mirrored game-source files for the live branch, not a verified Forever API contract.
 
-## Current decision and remaining evidence
+## Earlier containment decision and evidence
 
 The addon no longer invokes Enter or sends chat. The companion no longer offers auto-send, ignores old enabled settings, and emits manual-only packets. Old packets requesting send also remain manual drafts. The player presses the native A/send control after preparation; searches likewise stay manual.
 
@@ -35,4 +38,4 @@ Tests cover fragmented paste, explicit/current channel routing, restricted-field
 
 The addon now reports `ADDON_ACTION_BLOCKED` / `ADDON_ACTION_FORBIDDEN` with the actual function name when attributed to VoiceRouter. That identifies whether the remaining failure is opening chat, changing focus/text, or another operation. It never retries a blocked action. No computer-use tools or live game input were used for this research.
 
-If opening/filling chat still triggers the warning, remove that manipulation and use the game's own controller action to open a field and a deliberate mapped paste. Preparing a draft is supported by source precedents, but our exact transport remains unverified on Forever. Do not claim that removing auto-send alone guarantees the popup is resolved or that synthetic inputs have Blizzard approval.
+The following containment assessment predates the replacement. The current implementation removes addon-native opening/focus and uses the player's native chat action, metadata keys and plain paste. Preparing a draft is supported by source precedents, but our exact transport remains unverified on Forever. Do not claim that removing auto-send alone guarantees the popup is resolved or that synthetic inputs have Blizzard approval.

@@ -369,7 +369,7 @@
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Manual chat shortcut (optional)" Style="{StaticResource ItemTitle}" />
                                 <TextBlock Style="{StaticResource Caption}"
-                                           Text="For opening chat yourself. Speech recording works with chat closed; the third dictation click opens chat and pastes. Keep this shortcut matched to the game's binding if you use it." />
+                                           Text="Match this to WoW’s native chat-opening binding. Opening chat with a ready draft automatically pastes it; press A to send." />
                             </StackPanel>
                             <!-- The binding as the controller's own button icons, or "Press…" while recording. -->
                             <Border x:Name="OpenChatCap" Grid.Column="1" Style="{StaticResource Keycap}" />
@@ -377,7 +377,7 @@
 
                             <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Dictate (controller)" Style="{StaticResource ItemTitle}" />
-                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record, click to finish, then click again when Ready to open chat and paste. Click the left stick to cancel; otherwise review and press A to send." />
+                                <TextBlock Style="{StaticResource Caption}" Text="Keep moving with chat closed: click to record; pause or click to finish. When Ready, open native chat for automatic paste, then press A to send. In a focused search field, click again to paste. Left-stick click cancels." />
                             </StackPanel>
                             <Border x:Name="DictateCap" Grid.Row="1" Grid.Column="1" Style="{StaticResource Keycap}" />
                             <Button x:Name="DictateButton" Grid.Row="1" Grid.Column="2" Content="Change" Style="{StaticResource PanelButton}" Click="DictateButton_Click" />

@@ -11,9 +11,11 @@ The Windows x64 app uses Whisper **Turbo q5_0 only**, with Vulkan where availabl
 ## Controller flow
 
 1. Click the right stick to start recording. Keep moving with chat closed.
-2. Click it again to stop and transcribe. Wait for the editable draft preview.
-3. Click it when Ready to deliver the draft to the addon. The addon reads current context and opens the native chat draft, or fills an already focused empty text/search field.
-4. Press the game's A/send control to send chat yourself. Chat and search submission are always manual.
+2. Pause to finish automatically, or click it again to finish immediately. Wait for Ready.
+3. Open chat with WoW’s native controller command (default LB + RB + Down). The ready draft pastes automatically; no extra right-stick paste click is needed.
+4. Review the native chat header and press A to send.
+
+For an already focused empty Auction House/search field, click the right stick when Ready to paste, then confirm the search yourself. If chat is already open when your draft becomes ready, the same right-stick paste action is available. Transcription completion alone never triggers delivery.
 
 Left-stick click cancels before delivery. It cannot retract a sent message. Disable WoW's controller ping binding for right-stick click, otherwise each dictation click can ping.
 
@@ -21,7 +23,7 @@ The addon creates no visible box. The companion's optional overlay remains confi
 
 ## How the whole stack works
 
-![How ForeverRoutedSpeech works: three right-stick clicks, local transcription, live addon routing, then chat or search.](docs/images/how-it-works.svg)
+![How ForeverRoutedSpeech works: controller speech, local transcription, native chat opening with automatic paste, then manual confirmation.](docs/images/how-it-works.svg)
 
 The native chat header shows the final audience; the companion preview shows a suggestion. Install the matching app and addon, then reload WoW once.
 
@@ -30,13 +32,12 @@ The native chat header shows the final audience; the companion preview shows a s
 - The **Windows app** watches the controller and microphone. Whisper Turbo turns audio into text; WoW vocabulary hints help recognition, but real pronunciation accuracy still needs speech testing.
 - **fastText** suggests an audience from message text alone. It no longer receives invented group/guild/channel context. Guild suggestions require address language and the tuned score/margin. Inferred public routing stays disabled because the authored bootstrap is too small to certify the production precision target.
 - The companion shows the original message and suggested audience, and copies human-readable text. It does not claim to know the game's final destination.
-- On the final physical click, the app temporarily copies a versioned draft packet and requests the addon's internal `Ctrl+Shift+F10` inbox shortcut, followed by one paste. The inbox is an invisible 1 × 1 EditBox, not a pixel signal. Clipboard ownership, foreground game process and modifier checks guard external input. Partial input is never retried.
-- The inbox waits for 100 ms without text changes before validating, so a paste arriving in several callbacks is not rejected halfway through. The delivery packet stays on the clipboard until the next deliberate copy; queued Windows input does not prove WoW has read it. The next prepared draft copies readable text again.
-- The **addon** validates packet version, UTF-8 byte length, checksum, recent duplicate ID and expiry. It gathers party/raid/instance, guild, joined channel IDs/names and location locally at delivery time. No game context leaves WoW.
-- It removes only a recognized spoken routing instruction, resolves the destination, then fills native chat. The native chat header shows the actual final audience. Search fields receive the original plain transcript, without routing metadata or chat prefixes.
-- The addon never invokes the chat Enter handler or submits chat/search. Even old delivery packets requesting auto-send leave a draft for the player to confirm. The old Settings option has been removed.
+- A deliberate native chat-opening action, or a right-stick paste click in an already focused field, requests one delivery. The clipboard stays plain speech. A short internal function-key sequence carries only versioned metadata: nonce, intent hint, length and checksum. The addon assigns these internal bindings automatically.
+- The **addon** snapshots the already focused native field, validates the control signal, then waits for the plain paste to settle. It checks UTF-8 byte length, checksum, duplicate ID and expiry. It reads party/raid/instance, guild, joined channel IDs/names and location locally. No game context leaves WoW.
+- It removes only recognized spoken routing instructions and updates the native chat audience and text. It never opens chat, takes or clears focus, hides chat, invokes its Enter handler, or sends a message. Search receives the original transcript without routing metadata.
+- The native A/send control submits and closes chat through WoW. The old auto-send setting is ignored and removed from Settings.
 
-The internal shortcut is assigned by the addon; users do not map an extra controller button. If the addon is missing, its binding API is unsupported, or the invisible inbox cannot take focus, delivery cannot be guaranteed. The app has no reverse acknowledgement channel. Native focus, shortcut and protected-send behavior must be checked on the Forever client; unit tests do not establish live compatibility.
+There is no addon box or pixel strip. The companion has no reverse acknowledgement: accepting Windows input does not establish receipt or successful routing. The new function-key dispatch and destination changes still need player validation on Forever after one addon reload. No live game input was used during development.
 
 ## Routing examples
 
@@ -54,7 +55,7 @@ The internal shortcut is assigned by the addon; users do not map an extra contro
 
 Explicit requests and manual corrections take priority, followed by qualified model suggestions, an already open supported chat audience, group defaults, a retained solo chat audience and Say. Merely mentioning an item or guild is insufficient. Unavailable explicit channels refuse delivery rather than silently changing the audience.
 
-Messages are capped at **200 UTF-8 bytes**. The addon also checks the target edit box's exposed limits and confirms complete text after setting it. Oversized messages require editing; they are not truncated. Existing text, unsupported targets, damaged packets and unavailable APIs refuse delivery. No automatic retraining happens during play.
+Messages are capped at **200 UTF-8 bytes** in the companion. The addon refuses incomplete or mismatched text and unavailable explicit destinations. Existing field text is protected when the matching pasted body can be identified. A native search field can enforce a smaller limit during paste; the addon cannot recover missing characters and will report a mismatch instead of routing or submitting. Review the field and edit shorter text. No automatic retraining happens during play.
 
 ## Build and installation
 
@@ -70,4 +71,4 @@ Use the actual client's AddOns directory and Interface number; 16001 is the obse
 
 [Stack and tests](docs/ADDON-ROUTING.md) explain the implementation and its limits. [Controller acceptance checks](docs/CONTROLLER-TEST.md) cover live testing. [Test results](docs/TEST-RESULTS.md) distinguish mock/native tests from actual client evidence. [Policy notes](docs/POLICY.md) retain the prior review; this redesign is not a claim of Blizzard approval.
 
-Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream C# namespaces/project names remain where useful. Upstream auto-updates are disabled. This source is experimental and unsigned; the current live shortcut/inbox/send path has not been verified by computer automation.
+Forked from upstream commit `41f212558f4e9ba378ec44e9e6b9e44177b6a7be`. Upstream C# namespaces/project names remain where useful. Upstream auto-updates are disabled. This source is experimental and unsigned; the current function-key transport and native field routing require player validation.

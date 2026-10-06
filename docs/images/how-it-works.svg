@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1020" viewBox="0 0 960 1020" role="img" aria-labelledby="title desc">
-  <title id="title">ForeverRoutedSpeech: three clicks from speech to chat</title>
-  <desc id="desc">First right-stick click records. Second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Third click delivers through an invisible addon inbox. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses a manual A press to send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
+  <title id="title">ForeverRoutedSpeech: speech to a native chat draft</title>
+  <desc id="desc">First right-stick click records. Pause or second click stops recording; local Whisper Turbo transcribes and fastText suggests an audience for an editable preview. Opening chat with WoW’s native controller command automatically delivers a ready draft. An already focused search field uses a right-stick paste click. The addon reads live game context and routes explicit instructions before suggestions and defaults. Chat uses a manual A press to send; a focused empty search field receives plain text with manual confirmation. Left-stick click cancels before delivery.</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#94a3b8"/></marker>
     <style>
@@ -17,7 +17,7 @@
   <rect width="960" height="1020" rx="24" fill="#0f172a"/>
   <text x="40" y="55" class="label">FOREVERROUTEDSPEECH</text>
   <text x="40" y="105" class="title">Speak. Review. Route.</text>
-  <text x="40" y="140" class="body">Three right-stick clicks. Local speech recognition. Live addon context.</text>
+  <text x="40" y="140" class="body">Record with chat closed. Open native chat for automatic paste. Press A to send.</text>
 
   <rect x="40" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
   <rect x="60" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
@@ -30,7 +30,7 @@
   <path d="M316 290 H338" class="line"/>
   <rect x="345" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
   <rect x="365" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
-  <text x="480" y="227" text-anchor="middle" class="click">CLICK 2 · FINISH</text>
+  <text x="480" y="227" text-anchor="middle" class="click">PAUSE / FINISH</text>
   <text x="365" y="280" class="head">Transcribe + preview</text>
   <text x="365" y="318" class="body">Whisper Turbo → text</text>
   <text x="365" y="350" class="small">fastText suggests an audience.</text>
@@ -39,11 +39,11 @@
   <path d="M621 290 H643" class="line"/>
   <rect x="650" y="180" width="270" height="225" rx="18" fill="#1e293b" stroke="#334155"/>
   <rect x="670" y="200" width="230" height="40" rx="20" fill="#5eead4"/>
-  <text x="785" y="227" text-anchor="middle" class="click">CLICK 3 · DELIVER</text>
-  <text x="670" y="280" class="head">Hand draft to addon</text>
-  <text x="670" y="318" class="body">Validated clipboard packet</text>
-  <text x="670" y="350" class="small">Invisible addon inbox.</text>
-  <text x="670" y="376" class="small">No visible strip or calibration.</text>
+  <text x="785" y="227" text-anchor="middle" class="click">OPEN NATIVE CHAT</text>
+  <text x="670" y="280" class="head">Automatic draft paste</text>
+  <text x="670" y="318" class="body">Metadata keys + plain paste</text>
+  <text x="670" y="350" class="small">WoW opens chat; app pastes.</text>
+  <text x="670" y="376" class="small">No focus changes or addon box.</text>
 
   <path d="M785 412 V434 H480 V454" class="line"/>
   <rect x="40" y="465" width="880" height="170" rx="18" fill="#12303a" stroke="#2dd4bf"/>
@@ -56,13 +56,13 @@
   <path d="M480 664 H705 V687" class="line"/>
   <rect x="40" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
   <text x="65" y="740" class="head">CHAT</text>
-  <text x="65" y="773" class="body">Native chat opens with routed text.</text>
+  <text x="65" y="773" class="body">Already open chat receives routed text.</text>
   <text x="65" y="808" class="small">Press A in WoW to send yourself.</text>
   <text x="65" y="836" class="small">The addon never submits chat.</text>
   <text x="65" y="862" class="small">The game handles closing chat after sending.</text>
   <rect x="490" y="700" width="430" height="180" rx="18" fill="#1e293b" stroke="#334155"/>
   <text x="515" y="740" class="head">AUCTION HOUSE / SEARCH</text>
-  <text x="515" y="773" class="body">Already focused, empty text field.</text>
+  <text x="515" y="773" class="body">Focus empty field; RS to paste.</text>
   <text x="515" y="808" class="small">Original transcript; no chat prefix.</text>
   <text x="515" y="836" class="small">Confirm the search manually.</text>
   <text x="515" y="862" class="small">Search never auto-submits.</text>

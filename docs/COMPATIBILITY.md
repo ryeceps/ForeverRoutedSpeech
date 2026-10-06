@@ -1,11 +1,11 @@
-# Current addon compatibility checks
+# Current addon compatibility
 
-The default implementation resolves game context inside the addon and receives drafts through an invisible input inbox. It creates no visible status strip, captures no game pixels, and does not read live SavedVariables. No `/wvr verify`, `/wvr rendered`, `/wvr limit` or calibration commands are required.
+The current default uses plain clipboard speech plus a checksummed function-key control signal. Context is resolved inside WoW. No status strip, pixel capture, hidden EditBox, SavedVariables polling or calibration is used. The player opens a native field; the addon never opens, focuses, clears focus, hides or submits it.
 
-Local APIs read group category, guild membership, joined channel IDs/names, zone/subzone/city/resting and the currently focused edit box. Unsupported APIs or unavailable explicit destinations refuse delivery. Drafts have a conservative 200 UTF-8 byte cap; the exposed native field limits and complete text are also checked.
+The client screenshot confirmed `SetPreferredGamepadInteractTarget()` was forbidden during the previous native-focus handoff. The replacement removes that addon-originated open/focus path and slash callbacks. Tests make those native operations throw, while exercising actual shipped Lua routing. This removes the known path in code; it does not prove live protected-input compatibility.
 
-The player's screenshot now confirms a protected gamepad-focus failure: `SetPreferredGamepadInteractTarget()` is forbidden while our addon prepares chat. Automatic sending has been removed, but native chat opening/focus changes also need replacing. The addon stops on a reported protected action rather than claiming readiness. See [input research](ADDON-INPUT-RESEARCH.md) for the Forever-specific source chain and the limits of the current containment fix. No optional native Enter callback remains.
+A ready draft automatically pastes when the companion observes the player's native open-chat chord or Chat radial selection. RS remains available for an already focused field. A sends through WoW. No old setting or packet can enable automatic sending. Header/destination changes and internal function-key dispatch remain client acceptance checks, especially in combat and when edit boxes consume keyboard events.
 
-The path still depends on the client accepting the internal override shortcut, an alpha-zero EditBox taking keyboard focus and native chat destination setters. Mock coverage does not establish live support. The app has no reverse acknowledgement and must not report successful routing/send based on Windows accepting its shortcut alone.
+The app caps speech at 200 UTF-8 bytes. Native field caps are unchanged; truncation is detected as mismatch, never marked ready or submitted. The app has no reverse acknowledgement and reports a request rather than confirmed delivery.
 
-Install app and addon together, reload once, then follow [controller checks](CONTROLLER-TEST.md). Do not run the retired pixel probe commands to repair this path. Legacy pixel fixtures remain in `tests/fixtures` for historical tests; they are not packaged as addon modules.
+Install app and addon together, reload once, then follow [controller checks](CONTROLLER-TEST.md). Public Preview 2 is older; legacy pixel tests are historical only. [Input research](ADDON-INPUT-RESEARCH.md) records source precedents and their limitations.

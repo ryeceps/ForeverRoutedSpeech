@@ -26,6 +26,20 @@ function R.decode(packet)
     if hint~="default" and not valid[audience] and not hint:match("^m:channel:[1-9]%d?%d?%d?$") then return nil,"Invalid audience hint." end
     return {nonce=nonce,hint=hint,send=send=="1",text=text}
 end
+-- v2 metadata is carried only by bound function keys, never in a native text field.
+function R.control(hex)
+    if type(hex)~="string" or #hex==0 or #hex>160 or #hex%2~=0 or hex:find("[^a-f0-9]") then return nil,"Damaged routing control signal." end
+    local raw=hex:gsub("..",function(pair) return string.char(tonumber(pair,16)) end)
+    local nonce,hint,length,hash=raw:match("^frs2 ([a-f0-9]+) ([a-z0-9:]+) (%d+) ([a-f0-9]+)$")
+    if not nonce or #nonce~=32 or #hash~=8 or tonumber(length)<1 or tonumber(length)>200 then return nil,"Invalid routing control metadata." end
+    local audience=hint:match("^[im]:(.+)$")
+    local valid={say=true,guild=true,party=true,raid=true,instance=true,general=true,trade=true,lookingforgroup=true}
+    if hint~="default" and not valid[audience] and not hint:match("^m:channel:[1-9]%d?%d?%d?$") then return nil,"Invalid audience hint." end
+    return {nonce=nonce,hint=hint,length=tonumber(length),hash=tonumber(hash,16),header="frs2 "..nonce.." "..hint.." "..length}
+end
+function R.matches(control,text)
+    return R.validText(text) and #text==control.length and R.checksum(control.header.." "..text)==control.hash
+end
 function R.context()
     local guild,party,raid=R.call(IsInGuild),R.call(IsInGroup),R.call(IsInRaid)
     if type(guild)~="boolean" or type(party)~="boolean" or type(raid)~="boolean" then return nil,"Group/guild APIs unavailable." end

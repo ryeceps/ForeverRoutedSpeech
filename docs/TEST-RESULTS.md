@@ -1,5 +1,15 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 6: native field adapter and fewer controller actions
+
+The client screenshot identified forbidden `SetPreferredGamepadInteractTarget()` in the previous opening/focus path. The replacement creates no addon EditBox and invokes no native open, focus, clear-focus, hide or send handlers. Production Lua mocks forbid native opening/focus and verify live routes, checksummed metadata, plain paste, fragmented text events, both binding-button and focused key-event dispatch, occupied-field preservation, Unicode, native field truncation, cancellation, expiry and protected-action refusal.
+
+226 core tests and 124 deterministic routing assertions pass. Windows publishing succeeds; 30 actual native model checks pass, mean 1.059 ms and max 2.957 ms (capture excluded). This measures routing, not speech or end-to-end latency. New tests distinguish native open-chat actions from menu return/Send, require settling before the focus snapshot, and prove cancellation during opening causes no input. A ready draft now requests paste when the player opens native chat; an already focused search/chat field still supports RS paste. Completion of transcription alone never delivers. The clipboard remains ordinary speech throughout.
+
+These checks establish shipped-code behavior, not actual Forever event dispatch, taint isolation, protected destination/header compatibility or gameplay performance. No computer-use tools or live game input were used. The player must reload the matching addon and validate native chat opening, plain paste, final header and manual A send. The public Preview 2 archive remains older than this implementation.
+
+Earlier inbox and optional-send results below describe retired paths.
+
 ## October 6: one-way inbox and addon-local context
 
 Protected-action follow-up: automatic submission has been removed from the addon and current controller path. Legacy settings cannot enable it, and packets with the old send flag remain manual drafts. The Settings toggle and current README infographic now describe manual A confirmation. Earlier optional-send checks below are historical. Draft preparation itself still requires client acceptance.

@@ -5,6 +5,9 @@ enum ChatAction
 {
     None,
 
+    /// <summary>The player used the game's native open-chat chord.</summary>
+    NativeOpened,
+
     /// <summary>The dictate button, with the text box open.</summary>
     Dictate,
 

@@ -32,7 +32,7 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
     /// <summary>Text is on the clipboard, waiting to be pasted.</summary>
     public bool IsReady => ready;
 
-    public async Task<string?> DeliverToAddonAsync(RoutedDraft draft)
+    public async Task<string?> DeliverToAddonAsync(RoutedDraft draft, bool nativeChatOpening=false)
     {
         CancellationTokenSource cts;
         uint version;
@@ -42,33 +42,28 @@ sealed class Session(Func<Config> settings, Func<Transcriber?> currentModel, Act
             pasting=cts=new(); version=copied; ready=false;
         }
         AddonDeliveryResult result=new("Delivery stopped.",false);
-        bool encoded=false;
         try
         {
-            var packet=AddonEnvelope.Encode(draft.Message,draft.AddonHint,false,Guid.NewGuid().ToString("N"));
-            if(Native.CopyText(packet,out var next,version) is { } copyError) return copyError;
-            version=next; encoded=true;
+            var keys=AddonControl.Keys(draft.Message,draft.AddonHint,Guid.NewGuid().ToString("N"));
             (string? Error,bool Attempted) Input(AddonInput action)
             {
                 bool attempted;
                 string? error=action switch
                 {
-                    AddonInput.PrepareInbox=>Native.PrepareAddonInbox(version,out attempted),
-                    AddonInput.CancelInbox=>Native.CancelAddonInbox(version,out attempted),
+                    AddonInput.PrepareControl=>Native.PrepareAddonControl(version,keys,out attempted),
+                    AddonInput.CancelControl=>Native.CancelAddonControl(version,out attempted),
                     _=>Native.PasteCopied(version,out attempted)
                 };
                 return (error,attempted);
             }
-            result=await AddonDeliveryWorkflow.RunAsync(()=>Native.ValidateAddonDelivery(version),Input,cts.Token).ConfigureAwait(false);
+            result=await AddonDeliveryWorkflow.RunAsync(()=>Native.ValidateAddonDelivery(version),Input,cts.Token,nativeChatOpening:nativeChatOpening).ConfigureAwait(false);
             return result.Error;
         }
         finally
         {
             lock(gate)
             {
-                // SendInput queues Ctrl+V; it does not acknowledge the game's clipboard read.
-                // Keep the packet stable until the next deliberate clipboard operation.
-                if(encoded && Native.OwnsClipboard(version)) copied=version;
+                // Clipboard remains ordinary speech throughout delivery; no packet replacement.
                 ready=!result.Attempted && !cts.IsCancellationRequested;
                 pasting=null; phase(ready ? DictationPhase.Ready : DictationPhase.Idle); cts.Dispose();
             }

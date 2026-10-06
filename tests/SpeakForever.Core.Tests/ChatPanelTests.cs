@@ -16,6 +16,19 @@ public sealed class ChatPanelTests : IAsyncLifetime
     public ValueTask DisposeAsync() => engine.DisposeAsync();
 
     [Fact]
+    public void NativeOpeningIsDistinctFromMenuReturnAndSend()
+    {
+        var b=ControllerBindings.From(new Configuration.Config());
+        var panel=new ChatPanel();
+        Assert.Equal(ChatAction.NativeOpened,panel.OnButtons(0,Gamepad.LB|Gamepad.RB|Gamepad.Down,b));
+        Assert.Equal(ChatAction.MenuOpened,panel.OnButtons(0,Gamepad.X,b));
+        Assert.Equal(ChatAction.None,panel.OnButtons(0,Gamepad.B,b));
+        Assert.True(panel.InTextBox);
+        Assert.Equal(ChatAction.None,panel.OnButtons(0,Gamepad.A,b));
+        Assert.False(panel.IsOpen);
+    }
+
+    [Fact]
     public void DictateAloneDoesNotCountAsChatOpen()
     {
         engine.Press("RS");

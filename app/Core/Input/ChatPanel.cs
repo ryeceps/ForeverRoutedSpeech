@@ -37,7 +37,7 @@ sealed class ChatPanel
         if (b.OpenChat.FiredBy(prev, cur))
         {
             Open();
-            return ChatAction.None;
+            return ChatAction.NativeOpened;
         }
         if (!open) return b.Dictate.FiredBy(prev, cur) ? ChatAction.DictateWhileClosed : ChatAction.None;
         if (b.Dictate.FiredBy(prev, cur)) return depth == TextBox ? ChatAction.Dictate : ChatAction.DictateInMenu;

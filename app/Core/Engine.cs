@@ -516,13 +516,16 @@ public sealed class Engine : IAsyncDisposable
         {
             radialMenu.Open();
             chat.Close();
-            session.ChatClosing("Radial menu opened");
+            session.ChatClosing("Radial menu opened", keepReady: router.UsesAddonRouting);
             if (wasOpen) Changed();
             return;
         }
 
         switch (chat.OnButtons(prev, cur, b))
         {
+            case ChatAction.NativeOpened when !probe:
+                PasteOnNativeChatOpen();
+                break;
             case ChatAction.Dictate when probe:
                 Log.Info($"  would dictate ({b.Dictate.Text})");
                 break;
@@ -567,7 +570,16 @@ public sealed class Engine : IAsyncDisposable
     {
         if (!radialMenu.OnRightStick(x, y)) return;
         chat.Open();
+        PasteOnNativeChatOpen();
         Changed();
+    }
+
+    void PasteOnNativeChatOpen()
+    {
+        // Only an observed player chat-opening action can trigger this; completion of
+        // transcription or navigating back from a menu must never queue a paste.
+        if (router.UsesAddonRouting && session.IsReady && LastDraft is { Ready: true } draft)
+            _=DeliverToAddonByControllerAsync(draft, nativeChatOpening:true);
     }
 
     long lastDictationClick;
@@ -594,13 +606,13 @@ public sealed class Engine : IAsyncDisposable
         _ = OpenAndPasteByControllerAsync();
     }
 
-    async Task DeliverToAddonByControllerAsync(RoutedDraft draft)
+    async Task DeliverToAddonByControllerAsync(RoutedDraft draft, bool nativeChatOpening=false)
     {
         string? error;
-        try { error=await session.DeliverToAddonAsync(draft).ConfigureAwait(false); }
+        try { error=await session.DeliverToAddonAsync(draft,nativeChatOpening).ConfigureAwait(false); }
         catch(Exception failure) { error="Addon delivery stopped: "+failure.Message; }
         if(error is not null) { Log.Warn(error); PublishCopiedDraft(draft with {Reason=error}); }
-        else { Log.Info("Draft delivery requested once. The addon resolves the target; check the game for the final audience. Search submission stays manual."); Changed(); }
+        else { Log.Info("Plain-text paste requested once into the field WoW already has focused. The addon resolves chat locally; review its native header and press A to send."); Changed(); }
     }
 
     async Task OpenAndPasteByControllerAsync()

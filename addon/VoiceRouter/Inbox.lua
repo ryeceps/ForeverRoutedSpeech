@@ -1,187 +1,140 @@
--- Invisible, one-way input inbox. The companion never reads game pixels or memory.
+-- Focus-preserving draft adapter. No addon edit box, native opening, focus or send.
 local R=VoiceRouterLocal
-local inbox=CreateFrame("EditBox","ForeverRoutedSpeechInbox",UIParent)
-inbox:SetSize(1,1); inbox:SetPoint("TOPLEFT",UIParent,"TOPLEFT",0,0); inbox:SetAlpha(0)
-inbox:SetAutoFocus(false); inbox:SetMaxLetters(512)
-inbox:SetFontObject("GameFontNormal"); inbox:Show()
-if inbox.SetMaxBytes then inbox:SetMaxBytes(512) end
-local pending,busy,seen=nil,false,{}
-local blockedAction
-local seenOrder={}
+local pending,collecting,busy,blockedAction=nil,nil,false,nil
+local seen,seenOrder={},{}
+local hooked=setmetatable({},{__mode="k"})
+local events=CreateFrame("Frame")
 local function notify(text)
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then DEFAULT_CHAT_FRAME:AddMessage("ForeverRoutedSpeech: "..text) end
 end
-local function activeChat()
-    return type(ChatFrameUtil)=="table" and R.call(ChatFrameUtil.GetActiveWindow) or R.call(ChatEdit_GetActiveWindow)
-end
 local function focus() return R.call(GetCurrentKeyBoardFocus) end
-local function restricted(edit)
-    return edit and (R.call(edit.IsForbidden,edit) or R.call(edit.IsAnchoringRestricted,edit))
-end
-local function isChat(edit)
-    return edit and (edit==activeChat() or R.call(edit.GetChatType,edit)~=nil or R.call(edit.GetAttribute,edit,"chatType")~=nil)
-end
-local function lastChat()
-    return activeChat() or (type(ChatFrameUtil)=="table" and R.call(ChatFrameUtil.GetLastActiveWindow)) or R.call(ChatEdit_GetLastActiveWindow) or
-        (DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.editBox)
-end
-local function cancel()
-    local previous=pending and pending.focus
-    pending=nil; busy=true; inbox:SetText(""); inbox:ClearFocus(); busy=false
-    if previous and not restricted(previous) and R.call(previous.IsShown,previous) then R.call(previous.SetFocus,previous) end
-end
-local function prepare()
-    blockedAction=nil
-    cancel()
-    local current=focus()
-    local blocked
-    if restricted(current) then blocked="This text field is restricted by the client. Use native controls."
-    elseif current and type(current.GetText)=="function" and (R.call(current.GetText,current) or "")~="" then
-        blocked="The current field contains text. Finish or clear it before dictation paste."
+local function restricted(edit) return edit and (R.call(edit.IsForbidden,edit) or R.call(edit.IsAnchoringRestricted,edit)) end
+local function isChat(edit) return edit and (R.call(edit.GetChatType,edit) or R.call(edit.GetAttribute,edit,"chatType"))~=nil end
+local function cancel() pending=nil; collecting=nil end -- never alter native focus/text
+local function begin()
+    cancel(); blockedAction=nil
+    local edit=focus()
+    if not edit or restricted(edit) or not R.call(edit.IsObjectType,edit,"EditBox") or not R.call(edit.IsShown,edit) then
+        notify("Open chat with WoW's controller command, or select an empty search field, then click RS to paste."); return
     end
-    local search=current and not isChat(current) and R.call(current.IsObjectType,current,"EditBox")
-    if current and not isChat(current) and not search then blocked="Unsupported focused control." end
-    pending={focus=current,search=search and current or nil,chat=lastChat(),open=current and isChat(current),started=GetTime(),blocked=blocked}
-    busy=true; inbox:SetText(""); busy=false; inbox:SetFocus()
+    collecting={edit=edit,original=R.call(edit.GetText,edit) or "",hex="",started=GetTime()}
+end
+local function commit()
+    if not collecting then return end
+    local transaction=collecting; collecting=nil
+    if GetTime()-transaction.started>3 or focus()~=transaction.edit then notify("Field changed before delivery. Nothing was routed."); return end
+    local control,error=R.control(transaction.hex)
+    if not control then notify(error); return end
+    if seen[control.nonce] then notify("Repeated draft control signal. Nothing was routed."); return end
+    seen[control.nonce]=true; seenOrder[#seenOrder+1]=control.nonce
+    if #seenOrder>128 then seen[table.remove(seenOrder,1)]=nil end
+    transaction.control=control; pending=transaction
+end
+local function signal(key)
+    if key=="F17" then begin()
+    elseif key=="F18" then commit()
+    elseif key=="F19" then cancel()
+    elseif collecting then
+        local number=tonumber(key:match("^F(%d+)$"))
+        if number and number>=1 and number<=16 and #collecting.hex<160 then
+            collecting.hex=collecting.hex..string.format("%x",number-1)
+        else cancel(); notify("Routing control signal exceeded its frame. Nothing was routed.") end
+    end
 end
 local types={say="SAY",guild="GUILD",party="PARTY",raid="RAID",instance="INSTANCE_CHAT",general="CHANNEL",trade="CHANNEL",lookingforgroup="CHANNEL",custom="CHANNEL"}
 local kinds={SAY="say",GUILD="guild",PARTY="party",RAID="raid",INSTANCE_CHAT="instance"}
-local function selected(edit,context,open)
-    if not edit then return nil end
-    local kind=(not open and R.call(edit.GetStickyType,edit)) or R.call(edit.GetChatType,edit) or R.call(edit.GetAttribute,edit,"chatType")
+local function selected(edit,context)
+    local kind=R.call(edit.GetChatType,edit) or R.call(edit.GetAttribute,edit,"chatType")
     if kind=="CHANNEL" then
         local id=R.call(edit.GetChannelTarget,edit) or R.call(edit.GetAttribute,edit,"channelTarget")
-        for _,c in ipairs(context.channels) do if c.id==id then return {kind=c.kind,channel=c,open=open} end end
+        for _,c in ipairs(context.channels) do if c.id==id then return {kind=c.kind,channel=c,open=true} end end
     end
-    return kinds[kind] and {kind=kinds[kind],open=open} or {unsupported=true,open=open}
+    if kind=="SAY" then return nil end -- native opening defaults to Say; current group wins ordinary speech
+    return kinds[kind] and {kind=kinds[kind],open=true} or {unsupported=true,open=true}
 end
-local function setField(edit,text)
-    if restricted(edit) then return nil,"This text field is restricted by the client. Use native controls." end
-    local maxBytes=R.call(edit.GetMaxBytes,edit)
-    local maxLetters=R.call(edit.GetMaxLetters,edit)
-    local _,letters=text:gsub("[^\128-\191]","")
-    if type(maxBytes)=="number" and maxBytes>0 and #text>maxBytes or type(maxLetters)=="number" and maxLetters>0 and letters>maxLetters then
-        return nil,"Draft exceeds this field's limit. Edit it in the companion."
-    end
-    local ok=pcall(edit.SetText,edit,text)
-    local actual=R.call(edit.GetText,edit)
-    if not ok or actual~=text then
-        if type(actual)=="string" and actual~="" and text:sub(1,#actual)==actual then R.call(edit.SetText,edit,"") end
-        return nil,"The field did not accept the complete draft. Nothing was sent."
-    end
-    -- Never refocus a native field: Forever's focus callback enters protected gamepad code.
-    if not R.call(edit.HasFocus,edit) then return nil,"The field did not accept focus. Select it manually before sending." end
+local function replace(edit,expected,text)
+    if focus()~=edit or restricted(edit) or R.call(edit.GetText,edit)~=expected then return nil,"Field changed. No routing edits were made." end
+    busy=true; local ok=pcall(edit.SetText,edit,text); busy=false
+    if not ok or R.call(edit.GetText,edit)~=text then return nil,"The field did not accept the complete draft. Review it manually." end
     return true
 end
 local function consume()
-    if busy or not pending or not R.call(inbox.HasFocus,inbox) then return end
-    local raw=inbox:GetText()
-    if raw=="" then return end
-    local transaction=pending
-    if transaction.blocked then cancel(); notify(transaction.blocked); return end
-    local packet,error=R.decode(raw)
-    if not packet then cancel(); notify(error); return end
-    if GetTime()-transaction.started>3 or seen[packet.nonce] then cancel(); notify("Expired or repeated draft. Nothing was sent."); return end
-    seen[packet.nonce]=true; seenOrder[#seenOrder+1]=packet.nonce
-    if #seenOrder>128 then seen[table.remove(seenOrder,1)]=nil end
-    local context,decision
-    if not transaction.search then
-        context,error=R.context()
-        if context then decision,error=R.resolve(packet,context,selected(transaction.chat,context,transaction.open)) end
-        if not decision then cancel(); notify(error); return end
+    if not pending or busy then return end
+    local transaction=pending; pending=nil
+    local edit,control=transaction.edit,transaction.control
+    if focus()~=edit or not R.call(edit.IsShown,edit) or restricted(edit) then notify("Field focus changed. Nothing was routed."); return end
+    local raw=R.call(edit.GetText,edit) or ""
+    if transaction.original~="" then
+        -- Identify our exact pasted body even when inserted into existing text.
+        local matched=false
+        for i=1,math.min(#raw,4096) do if R.matches(control,raw:sub(i,i+control.length-1)) then matched=true; break end end
+        if matched then replace(edit,raw,transaction.original) end
+        notify("Existing text preserved. Finish or clear it before another draft."); return
     end
-    pending=nil; busy=true; inbox:SetText(""); inbox:ClearFocus(); busy=false
-    local edit=transaction.search
-    if edit then
-        if not R.call(edit.IsShown,edit) or (R.call(edit.GetText,edit) or "")~="" then notify("Search field changed; paste stopped."); return end
-        local ok,fieldError=setField(edit,packet.text)
-        notify(ok and "Search draft ready. Confirm search with your gamepad." or fieldError)
-        return -- Never submit a search, even when auto-send was requested.
-    end
-    if transaction.open then edit=transaction.chat end
-    if not edit then
-        if type(ChatFrameUtil)=="table" and type(ChatFrameUtil.OpenChat)=="function" then R.call(ChatFrameUtil.OpenChat,"")
-        else R.call(ChatEdit_OpenChat,"") end
-        edit=activeChat()
-    end
-    if blockedAction then notify("Draft preparation stopped: client blocked "..blockedAction..". Open chat using native controls."); return end
-    if not edit or not R.call(edit.IsShown,edit) or (R.call(edit.GetText,edit) or "")~="" then notify("Chat could not open with an empty field. Paste stopped."); return end
-    local chatType=types[decision.kind]
+    if not R.matches(control,raw) then notify("Paste was incomplete or the field changed. Review its text; nothing was routed or sent."); return end
+    if blockedAction then notify("Draft preparation stopped: client blocked "..blockedAction.."."); return end
+    if not isChat(edit) then notify("Search text ready. Confirm it with your gamepad."); return end
+    local context,error=R.context()
+    local decision
+    if context then decision,error=R.resolve({text=raw,hint=control.hint},context,selected(edit,context)) end
+    if not decision then replace(edit,raw,""); notify(error or "Requested audience unavailable. Edit or choose another destination."); return end
     local ok=pcall(function()
-        if edit.SetChatType then edit:SetChatType(chatType) else edit:SetAttribute("chatType",chatType) end
+        if edit.SetChatType then edit:SetChatType(types[decision.kind]) else edit:SetAttribute("chatType",types[decision.kind]) end
         if decision.channel then
             if edit.SetChannelTarget then edit:SetChannelTarget(decision.channel.id) else edit:SetAttribute("channelTarget",decision.channel.id) end
         end
-        if type(ChatFrameUtil)=="table" and ChatFrameUtil.UpdateHeader then ChatFrameUtil.UpdateHeader(edit)
+        if edit.UpdateHeader then edit:UpdateHeader()
+        elseif type(ChatFrameUtil)=="table" and ChatFrameUtil.UpdateHeader then ChatFrameUtil.UpdateHeader(edit)
         elseif type(ChatEdit_UpdateHeader)=="function" then ChatEdit_UpdateHeader(edit) end
     end)
-    if not ok then notify("Chat destination could not be set. Nothing was sent."); return end
-    local appliedType=R.call(edit.GetChatType,edit) or R.call(edit.GetAttribute,edit,"chatType")
-    local appliedId=R.call(edit.GetChannelTarget,edit) or R.call(edit.GetAttribute,edit,"channelTarget")
-    if appliedType~=chatType or decision.channel and appliedId~=decision.channel.id then notify("Chat destination did not match. Nothing was sent."); return end
-    local filled,fieldError=setField(edit,decision.message)
-    if not filled then notify(fieldError); return end
-    if blockedAction then notify("Draft preparation stopped: client blocked "..blockedAction..". Use native controls."); return end
+    local applied=R.call(edit.GetChatType,edit) or R.call(edit.GetAttribute,edit,"chatType")
+    local id=R.call(edit.GetChannelTarget,edit) or R.call(edit.GetAttribute,edit,"channelTarget")
+    if not ok or blockedAction or applied~=types[decision.kind] or decision.channel and id~=decision.channel.id then
+        notify("Chat destination blocked or did not match. Nothing was sent; review the native header."); return
+    end
+    local filled,why=replace(edit,raw,decision.message)
+    if not filled or blockedAction then notify(why or "Client blocked draft preparation."); return end
     local name=decision.channel and decision.channel.name.." (/"..decision.channel.id..")" or decision.kind
-    -- Old packets may request send. Ignore that flag: only the player submits chat.
     notify(name.." draft ready. Press A to send.")
 end
--- Native pastes can emit multiple changes. Decode only after a quiet interval,
--- otherwise the first slash/header would cancel focus and lose the remaining text.
-inbox:SetScript("OnTextChanged",function()
-    if not busy and pending then pending.changed=GetTime() end
-end)
-inbox:SetScript("OnEscapePressed",cancel)
-inbox:SetScript("OnUpdate",function()
-    if pending and GetTime()-pending.started>3 then cancel(); notify("Draft inbox timed out. Nothing was sent.")
-    elseif pending and pending.changed and GetTime()-pending.changed>=.1 then
-        pending.changed=nil; consume()
-    end
-end)
-local openButton=CreateFrame("Button","ForeverRoutedSpeechOpenInbox",UIParent)
-openButton:SetScript("OnClick",prepare)
-local cancelButton=CreateFrame("Button","ForeverRoutedSpeechCancelInbox",UIParent)
-cancelButton:SetScript("OnClick",cancel)
-local function bind()
-    if R.call(InCombatLockdown) then return end
-    if type(SetOverrideBindingClick)=="function" then
-        SetOverrideBindingClick(openButton,true,"CTRL-SHIFT-F10","ForeverRoutedSpeechOpenInbox")
-        SetOverrideBindingClick(cancelButton,true,"CTRL-SHIFT-F9","ForeverRoutedSpeechCancelInbox")
-    else notify("Addon shortcut API unavailable on this client.") end
-end
-local hooked=setmetatable({},{__mode="k"})
-local function hookKeys(edit)
-    if not edit or hooked[edit] or type(edit.HookScript)~="function" then return end
+local function hook(edit)
+    if not edit or restricted(edit) or hooked[edit] or type(edit.HookScript)~="function" then return end
     hooked[edit]=true
+    edit:HookScript("OnTextChanged",function()
+        if not busy and pending and pending.edit==edit then pending.changed=GetTime() end
+    end)
     edit:HookScript("OnKeyDown",function(_,key)
-        if R.call(IsControlKeyDown) and R.call(IsShiftKeyDown) then
-            if key=="F10" then prepare() elseif key=="F9" then cancel() end
-        end
+        if R.call(IsControlKeyDown) and R.call(IsShiftKeyDown) and R.call(IsAltKeyDown) then signal(key); hook(focus()) end
     end)
 end
-local events=CreateFrame("Frame")
+local buttons={}
+for i=1,19 do
+    local key="F"..i
+    local button=CreateFrame("Button","ForeverRoutedSpeechControl"..i,UIParent)
+    button:SetScript("OnClick",function() signal(key); hook(focus()) end)
+    buttons[i]=button
+end
+local function bind()
+    if R.call(InCombatLockdown) then return end
+    if type(SetOverrideBindingClick)~="function" then notify("Routing shortcut API unavailable. Plain speech remains on the clipboard."); return end
+    for i=1,19 do SetOverrideBindingClick(buttons[i],true,"CTRL-ALT-SHIFT-F"..i,"ForeverRoutedSpeechControl"..i) end
+end
 events:RegisterEvent("PLAYER_LOGIN"); events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("ADDON_ACTION_BLOCKED"); events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent",function(_,event,addonName,functionName)
     if event=="ADDON_ACTION_BLOCKED" or event=="ADDON_ACTION_FORBIDDEN" then
         if addonName=="VoiceRouter" or addonName=="ForeverRoutedSpeech" then
-            blockedAction=tostring(functionName)
-            notify("Client blocked "..tostring(functionName).." ("..event.."). Use native controls; no automatic send or retry.")
+            blockedAction=tostring(functionName); cancel()
+            notify("Client blocked "..blockedAction.." ("..event.."). No send or retry.")
         end
         return
     end
-    bind(); hookKeys(lastChat())
+    bind(); hook(focus())
 end)
-local elapsed=0
-events:SetScript("OnUpdate",function(_,dt)
-    elapsed=elapsed+dt
-    if elapsed>=.25 then elapsed=0; hookKeys(focus()) end
+events:SetScript("OnUpdate",function()
+    hook(focus())
+    if collecting and GetTime()-collecting.started>3 then cancel() end
+    if pending and GetTime()-pending.started>3 then cancel(); notify("Paste adapter timed out. Nothing was sent.")
+    elseif pending and pending.changed and GetTime()-pending.changed>=.1 then consume() end
 end)
-hookKeys(inbox)
--- Unknown addon commands remain local and never become public chat messages.
-SLASH_FOREVERROUTEDSPEECH1="/frs1"
-SlashCmdList.FOREVERROUTEDSPEECH=function() notify("Use the final controller click to deliver the draft. No message was sent.") end
-SLASH_VOICEROUTER1="/wvr"
-SlashCmdList.VOICEROUTER=function(text)
-    notify("Addon routing ready. Context is resolved here at delivery. No strip, calibration or setup commands.")
-end
+-- No addon slash handlers: Forever's native cleanup after addon commands can taint gamepad focus.
