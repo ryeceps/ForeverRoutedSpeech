@@ -1,5 +1,15 @@
 # ForeverRoutedSpeech earlier local verification — October 2, 2026
 
+## October 5: normalized UI scale regression reproduced
+
+The earlier placement/palette fixes did not establish a live connection. The addon used `1 / UIParent:GetEffectiveScale()` as if one unscaled UI unit were one screen pixel. Blizzard's PixelUtil source converts pixels to UI units using `768 / physicalHeight`; the omitted factor made a nominal one-pixel cell 1.5625 pixels wide at 1200 pixels high. The fixed addon applies that factor through PixelUtil, with a GetPhysicalScreenSize fallback, and refreshes on display/UI changes and world entry.
+
+Evidence: running the new physical-geometry assertion against the actual pre-fix addon fails. The corrected Lua addon passes at 768, 1200, 1222, 1440 and 2160 physical pixels high, each at UI scales 0.5, 0.75 and 1. Its generated wire frames and frame scales are saved as synthetic fixtures. `BridgeDiscoveryRegressionTests` projects those actual Lua results into simulated screen pixels and runs `BridgeLocator.Find`, the same detector now used by Windows capture. It reproduces a failed connection with the old 1.5625-pixel pitch and succeeds with the corrected output. Corruption, scene colors and occlusion remain rejected.
+
+201 core tests, 124 deterministic routing assertions, Lua checks and packaged native smoke checks passed. CI now runs Lua checks and verifies fixture geometry/wire fields before core tests. Local app and installed addon were rebuilt/updated. These results validate the regression and detector fix; they do not by themselves establish a live Forever-client connection or successful controller paste. The passive live probe additionally requires two valid frames with a stable session and advancing heartbeat.
+
+Reference: [Blizzard UI PixelUtil source](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_SharedXML/PixelUtil.lua).
+
 ## October 5: compact high-contrast bridge
 
 The user's subsequent test still failed: the dim decoder rejected RGB 26,26,26 at bit 31 and the third click remained blocked. The wide 1024 × 16 strip is replaced by a 128 × 32 physical-pixel signal using the original full black/white encoding. This uses one quarter of the previous area and retains the 512-byte capacity, protocol 5 context, checksum, and current routing. A 16-pixel left inset and 32-pixel bottom inset protect against clipped window edges. Automatic discovery recognizes compact and wide layouts; no user calibration is added.

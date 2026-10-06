@@ -1,5 +1,6 @@
 """Run the addon in Lua 5.1 mocks; verify its exact wire bytes, not client support."""
 import json
+import base64
 import math
 import struct
 import sys
@@ -11,6 +12,8 @@ root=Path(__file__).resolve().parents[1]
 lua=LuaRuntime(unpack_returned_tuples=True)
 lua.execute('''
 drawCalls=0; pixels = {}; handlers = {}; SlashCmdList = {}; UIParent = {GetEffectiveScale=function() return .75 end}; LE_PARTY_CATEGORY_INSTANCE = 2
+physicalHeight=1200
+function GetPhysicalScreenSize() return 1920, physicalHeight end
 function CreateFrame()
  local f = {}; strip=f
  function f:SetScale(scale) self.scale=scale end
@@ -39,13 +42,14 @@ function GetChannelList() return 4, 'Trade - City', false, 9, 'Friends é', fals
 SLASH_SAY1 = '/say'; SLASH_GUILD1 = '/g'; SLASH_PARTY1 = '/p'; SLASH_RAID1 = '/raid'; SLASH_INSTANCE_CHAT1 = '/i'
 function print(...) end
 ''')
-lua.execute((root/"addon/VoiceRouter/VoiceRouter.lua").read_text(encoding="utf-8"))
+source_path=Path(sys.argv[sys.argv.index('--addon-source')+1]) if '--addon-source' in sys.argv else root/"addon/VoiceRouter/VoiceRouter.lua"
+lua.execute(source_path.read_text(encoding="utf-8"))
 lua.execute("handlers.OnEvent(nil,'ADDON_LOADED','VoiceRouter'); handlers.OnUpdate(nil,.25)")
 assert lua.globals().strip.width==128 and lua.globals().strip.height==32, 'compact bridge at minimum one-pixel cell pitch'
 assert lua.globals().strip.point[1]=='BOTTOMLEFT' and lua.globals().strip.point[4]==16 and lua.globals().strip.point[5]==32, 'bridge inset avoids offscreen maximized client edges'
-assert abs(lua.globals().strip.scale*.75-1)<1e-9, 'physical pixel scale compensation'
+assert abs(lua.globals().strip.scale*.75*1200/768-1)<1e-9, 'WoW normalized UI units converted to physical pixels'
 lua.execute("UIParent.GetEffectiveScale=function() return .5 end; handlers.OnEvent(nil,'UI_SCALE_CHANGED')")
-assert lua.globals().strip.scale==2, 'physical scale refreshed after UI scale changes'
+assert abs(lua.globals().strip.scale-1.28)<1e-9, 'physical scale refreshed after UI scale changes'
 
 def frame():
     values=[int(round(lua.globals().pixels[i].r)) for i in range(1,4097)]
@@ -135,3 +139,28 @@ lua.execute("GetZoneText=function() return 'Goldshire' end; handlers.OnUpdate(ni
 fields,_=decode(frame());assert fields[19]=='?' and fields[20]=='1', 'resting in an inn does not imply city'
 lua.execute("Enum={UIMapFlag={IsCityMap=1048576}}; C_Map={GetBestMapForUnit=function() return 123 end, GetMapInfo=function() return {flags=1048576} end}; handlers.OnUpdate(nil,.25)")
 fields,_=decode(frame());assert fields[19]=='1', 'client city-map flag used where present'
+
+# These values are emitted by the actual addon, not a duplicate scaling formula.
+fixtures=[]
+for height in (768, 1200, 1222, 1440, 2160):
+    for ui_scale in (.5, .75, 1):
+        lua.globals().physicalHeight=height
+        lua.execute(f"UIParent.GetEffectiveScale=function() return {ui_scale} end; handlers.OnEvent(nil,'DISPLAY_SIZE_CHANGED'); handlers.OnUpdate(nil,.25)")
+        scale=lua.globals().strip.scale
+        assert abs(scale*ui_scale*height/768-1)<1e-9, f'physical pitch at {height} high, UI scale {ui_scale}'
+        fixtures.append(dict(height=height, uiScale=ui_scale, addonScale=scale,
+            frame=base64.b64encode(frame()).decode('ascii')))
+fixture_path=root/'tests/fixtures/addon-bridge-geometry.json'
+if '--write-geometry' in sys.argv:
+    fixture_path.parent.mkdir(exist_ok=True)
+    fixture_path.write_text(json.dumps(fixtures,indent=2)+'\n',encoding='utf-8')
+else:
+    saved=json.loads(fixture_path.read_text(encoding='utf-8'))
+    assert len(saved)==len(fixtures)
+    for recorded,current in zip(saved,fixtures):
+        for key in ('height','uiScale','addonScale'):
+            assert abs(recorded[key]-current[key])<1e-9, f'stale addon geometry fixture: {key}'
+        assert decode(base64.b64decode(recorded['frame']))[0]==decode(base64.b64decode(current['frame']))[0], 'stale addon wire fixture'
+lua.execute("PixelUtil={GetPixelToUIUnitFactor=function() return .64 end}; UIParent.GetEffectiveScale=function() return .75 end; handlers.OnEvent(nil,'PLAYER_ENTERING_WORLD')")
+assert abs(lua.globals().strip.scale*.75-.64)<1e-9, 'client PixelUtil path and world entry refresh'
+print('PASS: actual addon physical geometry at five resolutions and three UI scales; PixelUtil and physical-screen fallback.')

@@ -19,6 +19,13 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify actual Lua addon geometry and wire fixtures
+        run: |
+          python -m pip install lupa==2.6
+          python tests/addon_probe_test.py
       - name: Core tests
         run: dotnet run --project tests/SpeakForever.Core.Tests -c Release
       - name: Deterministic routing tests

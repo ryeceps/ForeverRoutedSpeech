@@ -21,7 +21,11 @@ if(args.Length==1 && args[0] is "--context-probe" or "--calibrate-context" or "-
                     try
                     {
                         var observedContext=VoiceRouter.App.WindowsCapture.ReadAuto(settings);
-                        Console.WriteLine($"Live observedContext: protocol {observedContext.ProtocolVersion}, build {observedContext.ClientBuild}, heartbeat {observedContext.Heartbeat}, group {observedContext.Group}, guild {observedContext.InGuild}, chat {observedContext.ChatInput}, audience {observedContext.ActiveDestination}, channels {string.Join(",",observedContext.Channels.Select(c=>$"{c.Id}:{c.Kind}"))}.");
+                        Thread.Sleep(350);
+                        var nextContext=VoiceRouter.App.WindowsCapture.ReadAuto(settings);
+                        if(nextContext.Session!=observedContext.Session || nextContext.Heartbeat==observedContext.Heartbeat)
+                            throw new IOException("No stable advancing addon heartbeat observed.");
+                        Console.WriteLine($"Live observedContext: protocol {nextContext.ProtocolVersion}, build {nextContext.ClientBuild}, heartbeat {observedContext.Heartbeat} -> {nextContext.Heartbeat}, group {nextContext.Group}, guild {nextContext.InGuild}, chat {nextContext.ChatInput}, audience {nextContext.ActiveDestination}, channels {string.Join(",",nextContext.Channels.Select(c=>$"{c.Id}:{c.Kind}"))}.");
                         return;
                     }
                     catch(Exception error) {if(attempt%10==0) Console.WriteLine("Foreground capture: "+error.Message);}

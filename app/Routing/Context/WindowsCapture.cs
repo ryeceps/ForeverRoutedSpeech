@@ -107,29 +107,9 @@ public static class WindowsCapture
         byte[] rgb=new byte[area.Stride*height]; int stride=area.Stride;
         try { Marshal.Copy(area.Scan0,rgb,0,rgb.Length); } finally { bitmap.UnlockBits(area); }
         (byte R,byte G,byte B) Pixel(int x,int y) { int i=y*stride+x*3;return(rgb[i+2],rgb[i+1],rgb[i]); }
-        byte[] magic="WVR1"u8.ToArray();
-        foreach(int columns in new[]{StatusProtocol.Columns,512})
-        foreach(double pitch in new[]{1d,1.25,1.5,2,2.5,3,4})
-        for(int y=0;y<=height-Math.Ceiling(StatusProtocol.Capacity*8/columns*pitch);y++)
-        for(int x=0;x<=width-Math.Ceiling(columns*pitch);x++)
-        {
-            bool match=true;
-            var first=Pixel(x+(int)(.5*pitch),y+(int)(.5*pitch)); bool dim=first.R<190;
-            for(int bit=0;bit<32;bit++)
-            {
-                var c=Pixel(x+(int)((bit+.5)*pitch),y+(int)(.5*pitch));
-                bool one=((magic[bit/8]>>(bit%8))&1)!=0;
-                if(Math.Abs(c.R-c.G)>20 || Math.Abs(c.G-c.B)>20 || (one ? c.R<(dim?28:190) || dim && c.R>160 : c.R>(dim?18:65))) {match=false;break;}
-            }
-            if(!match) continue;
-            try
-            {
-                var context=PixelStrip.Decode(pitch,(dx,dy)=>Pixel(x+dx,y+dy),columns);
-                return (settings with {StripX=left-origin.X+x,StripY=top-origin.Y+y,CellPixels=pitch,StripColumns=columns},context);
-            }
-            catch(FormatException) { }
-        }
-        return null;
+        var found = BridgeLocator.Find(width,height,Pixel);
+        return found is null ? null : (settings with {StripX=left-origin.X+found.X,StripY=top-origin.Y+found.Y,
+            CellPixels=found.Pitch,StripColumns=found.Columns},found.Context);
     }
     private static nint FindGameWindow(Settings settings)
     {

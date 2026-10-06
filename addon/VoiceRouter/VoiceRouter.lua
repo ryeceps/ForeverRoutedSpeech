@@ -1,8 +1,24 @@
 -- No SendChatMessage, input simulation, or live SavedVariables transport.
 local addon = CreateFrame("Frame", "VoiceRouterStatusStrip", UIParent)
 local columns, rows, cell = 128, 32, 1
--- Compact physical-pixel signal; preserve the original high-contrast encoding.
-if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
+-- WoW UI units are normalized to 768 high, not physical screen pixels.
+local function refreshScale()
+    local factor
+    if type(PixelUtil) == "table" and type(PixelUtil.GetPixelToUIUnitFactor) == "function" then
+        local ok, value = pcall(PixelUtil.GetPixelToUIUnitFactor)
+        if ok and type(value) == "number" and value > 0 then factor = value end
+    end
+    if not factor and type(GetPhysicalScreenSize) == "function" then
+        local ok, _, height = pcall(GetPhysicalScreenSize)
+        if ok and type(height) == "number" and height > 0 then factor = 768 / height end
+    end
+    if factor and addon.SetScale and UIParent.GetEffectiveScale then
+        addon:SetScale(factor / UIParent:GetEffectiveScale())
+        return true
+    end
+    return false
+end
+local scaleReady = refreshScale()
 addon:SetSize(columns * cell, rows * cell)
 -- A maximized client's bottom can extend past the monitor (observed: 22px).
 -- Keep the whole signal inside the visible area, rather than below the screen.
@@ -124,6 +140,7 @@ local function activeAudience(joined, chatInput)
     return chatInput == "open" and "unsupported" or "none", ""
 end
 local function emit()
+    if not scaleReady then label:SetText("Voice Router: physical pixel API missing"); return end
     local number = build()
     local db = VoiceRouterProbeDB
     local group, guild = "solo", safe(IsInGuild)
@@ -202,9 +219,10 @@ end)
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("UI_SCALE_CHANGED")
 addon:RegisterEvent("DISPLAY_SIZE_CHANGED")
+addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 addon:SetScript("OnEvent", function(_, event, name)
-    if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
-        if addon.SetScale and UIParent.GetEffectiveScale then addon:SetScale(1 / UIParent:GetEffectiveScale()) end
+    if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+        scaleReady = refreshScale()
         return
     end
     if name ~= "VoiceRouter" then return end
